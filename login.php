@@ -147,6 +147,26 @@ if ($auth->isLoggedIn()) {
             background: #495057 !important;
             color: white !important;
         }
+
+        .btn-outline-primary {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        .btn-outline-primary:hover {
+            background-color: var(--accent-primary);
+            color: white;
+        }
+
+        body.light-mode .btn-outline-primary {
+            border-color: var(--accent-primary) !important;
+            color: var(--accent-primary) !important;
+        }
+
+        body.light-mode .btn-outline-primary:hover {
+            background-color: var(--accent-primary) !important;
+            color: white !important;
+        }
         
         .btn-primary {
             background: linear-gradient(135deg, #00d4ff, #0891b2);
@@ -208,7 +228,7 @@ if ($auth->isLoggedIn()) {
                 <label for="password" class="form-label">Password</label>
                 <div class="input-group">
                     <input type="password" class="form-control" id="password" name="password" required>
-                    <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
+                    <button class="btn btn-outline-primary" type="button" onclick="togglePassword()" title="Lihat/Sembunyikan Password">
                         <i class="fas fa-eye" id="togglePasswordIcon"></i>
                     </button>
                 </div>

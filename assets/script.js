@@ -1421,9 +1421,26 @@ function showAddStockModal() {
         products.forEach(product => {
             const option = document.createElement('option');
             option.value = product.id;
-            option.textContent = `${product.name} (Stok: ${product.stock})`;
+            option.textContent = `${product.name} - ${product.category} (Stok: ${product.stock}) - Rp ${formatNumber(product.price)}`;
             productSelect.appendChild(option);
-});
+        });
+
+        // Initialize Select2
+        $('#stock-product').select2({
+            theme: 'bootstrap-5',
+            placeholder: '-- Cari dan Pilih Produk --',
+            allowClear: true,
+            dropdownParent: $('#stockModal'),
+            width: '100%',
+            language: {
+                noResults: function() {
+                    return "Produk tidak ditemukan";
+                },
+                searching: function() {
+                    return "Mencari...";
+                }
+            }
+        });
     }
 
     // Reset form
@@ -1572,9 +1589,10 @@ async function addStock() {
             const modal = bootstrap.Modal.getInstance(document.getElementById('stockModal'));
             modal.hide();
 
-            // Reset form
+            // Reset form and Select2
             document.getElementById('stockForm').reset();
             document.getElementById('selling-price-display').value = '';
+            $('#stock-product').val(null).trigger('change');
 
             // Reload inventory data
             loadInventoryData();

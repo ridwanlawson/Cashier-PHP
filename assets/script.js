@@ -554,10 +554,10 @@ function displayProductSuggestions(searchResults) {
 function selectProduct(product) {
     document.getElementById('search-product').value = product.name;
     document.getElementById('product-suggestions').innerHTML = '';
-    
+
     // Auto add to cart with quantity 1
     const qty = 1;
-    
+
     if (qty > product.stock) {
         showAlert('Stok tidak mencukupi!', 'warning');
         return;
@@ -597,7 +597,7 @@ function selectProduct(product) {
 
 function addToCart() {
     const searchTerm = document.getElementById('search-product').value.trim();
-    
+
     if (!searchTerm) {
         showAlert('Masukkan nama produk atau barcode!', 'warning');
         return;
@@ -682,7 +682,7 @@ function updateCart() {
 function increaseQty(index) {
     const item = cart[index];
     const product = products.find(p => p.id === item.product_id);
-    
+
     if (product && item.quantity < product.stock) {
         cart[index].quantity += 1;
         cart[index].subtotal = cart[index].price * cart[index].quantity;

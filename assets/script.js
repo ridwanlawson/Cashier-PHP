@@ -28,7 +28,89 @@ document.addEventListener('DOMContentLoaded', function() {
     if (marginValue) {
         marginValue.addEventListener('input', calculateSellingPrice);
     }
+
+    // Initialize DataTables after a short delay to ensure DOM is ready
+    setTimeout(initializeDataTables, 1000);
 });
+
+// Initialize DataTables for all tables
+function initializeDataTables() {
+    try {
+        // Products table
+        if ($.fn.DataTable.isDataTable('#products-table')) {
+            $('#products-table').DataTable().destroy();
+        }
+        $('#products-table').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
+            },
+            dom: 'Bfrtip',
+            buttons: [
+                'copy', 'csv', 'excel', 'pdf', 'print'
+            ],
+            pageLength: 25,
+            responsive: true,
+            order: [[1, 'asc']]
+        });
+
+        // Transactions table
+        if ($.fn.DataTable.isDataTable('#transactions-table')) {
+            $('#transactions-table').DataTable().destroy();
+        }
+        $('#transactions-table').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
+            },
+            dom: 'Bfrtip',
+            buttons: [
+                'copy', 'csv', 'excel', 'pdf', 'print'
+            ],
+            pageLength: 25,
+            responsive: true,
+            order: [[1, 'desc']]
+        });
+
+        // Inventory table
+        if ($.fn.DataTable.isDataTable('#inventory-table')) {
+            $('#inventory-table').DataTable().destroy();
+        }
+        $('#inventory-table').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
+            },
+            dom: 'Bfrtip',
+            buttons: [
+                'copy', 'csv', 'excel', 'pdf', 'print'
+            ],
+            pageLength: 25,
+            responsive: true,
+            order: [[0, 'desc']]
+        });
+
+        // Users table (if exists)
+        if ($('#users-table').length > 0) {
+            if ($.fn.DataTable.isDataTable('#users-table')) {
+                $('#users-table').DataTable().destroy();
+            }
+            $('#users-table').DataTable({
+                language: {
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
+                },
+                dom: 'Bfrtip',
+                buttons: [
+                    'copy', 'csv', 'excel', 'pdf', 'print'
+                ],
+                pageLength: 25,
+                responsive: true,
+                order: [[3, 'desc']]
+            });
+        }
+
+        console.log('DataTables initialized successfully');
+    } catch (error) {
+        console.error('Error initializing DataTables:', error);
+    }
+}
 
 // Debounce function to limit API calls
 function debounce(func, wait) {
@@ -132,20 +214,109 @@ async function loadDashboardStats() {
             throw new Error(stats.error || 'Unknown error from server');
         }
 
+        // Update basic stats
         const totalProducts = document.getElementById('total-products');
         const todayTransactions = document.getElementById('today-transactions');
         const todayRevenue = document.getElementById('today-revenue');
         const lowStock = document.getElementById('low-stock');
+        const monthlyRevenue = document.getElementById('monthly-revenue');
+        const monthlyTransactions = document.getElementById('monthly-transactions');
+        const avgTransaction = document.getElementById('avg-transaction');
+        const bestProduct = document.getElementById('best-product');
 
         if (totalProducts) totalProducts.textContent = stats.total_products || 0;
         if (todayTransactions) todayTransactions.textContent = stats.today_transactions || 0;
         if (todayRevenue) todayRevenue.textContent = 'Rp ' + formatNumber(stats.today_revenue || 0);
         if (lowStock) lowStock.textContent = stats.low_stock || 0;
+        if (monthlyRevenue) monthlyRevenue.textContent = 'Rp ' + formatNumber(stats.monthly_revenue || 0);
+        if (monthlyTransactions) monthlyTransactions.textContent = stats.monthly_transactions || 0;
+        if (avgTransaction) avgTransaction.textContent = 'Rp ' + formatNumber(stats.avg_transaction || 0);
+        if (bestProduct) bestProduct.textContent = stats.best_product || '-';
+
+        // Load recent transactions
+        loadRecentTransactions();
+        
+        // Load low stock products
+        loadLowStockProducts();
 
         console.log('Dashboard stats loaded successfully');
     } catch (error) {
         console.error('Error loading stats:', error);
         showAlert('Error loading dashboard stats: ' + error.message, 'danger');
+    }
+}
+
+// Load recent transactions for dashboard
+async function loadRecentTransactions() {
+    try {
+        const transactions = await apiRequest('api/transactions.php?recent=5');
+        const container = document.getElementById('recent-transactions');
+        
+        if (!container) return;
+        
+        if (!Array.isArray(transactions) || transactions.length === 0) {
+            container.innerHTML = '<p class="text-center text-muted">Tidak ada transaksi terbaru</p>';
+            return;
+        }
+
+        container.innerHTML = '';
+        transactions.forEach(transaction => {
+            const item = document.createElement('div');
+            item.className = 'list-group-item list-group-item-action';
+            item.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">Transaksi #${transaction.id}</h6>
+                        <small class="text-muted">${new Date(transaction.transaction_date).toLocaleString('id-ID')}</small>
+                    </div>
+                    <span class="text-success">Rp ${formatNumber(transaction.total)}</span>
+                </div>
+            `;
+            container.appendChild(item);
+        });
+    } catch (error) {
+        console.error('Error loading recent transactions:', error);
+        const container = document.getElementById('recent-transactions');
+        if (container) {
+            container.innerHTML = '<p class="text-center text-danger">Error memuat data</p>';
+        }
+    }
+}
+
+// Load low stock products for dashboard
+async function loadLowStockProducts() {
+    try {
+        const products = await apiRequest('api/products.php?lowstock=5');
+        const container = document.getElementById('low-stock-products');
+        
+        if (!container) return;
+        
+        if (!Array.isArray(products) || products.length === 0) {
+            container.innerHTML = '<p class="text-center text-muted">Semua produk stok aman</p>';
+            return;
+        }
+
+        container.innerHTML = '';
+        products.forEach(product => {
+            const item = document.createElement('div');
+            item.className = 'list-group-item list-group-item-action';
+            item.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1 text-warning">${product.name}</h6>
+                        <small class="text-muted">${product.category}</small>
+                    </div>
+                    <span class="badge bg-danger">${product.stock}</span>
+                </div>
+            `;
+            container.appendChild(item);
+        });
+    } catch (error) {
+        console.error('Error loading low stock products:', error);
+        const container = document.getElementById('low-stock-products');
+        if (container) {
+            container.innerHTML = '<p class="text-center text-danger">Error memuat data</p>';
+        }
     }
 }
 
@@ -175,6 +346,11 @@ function displayProducts() {
     const tbody = document.getElementById('products-tbody');
     if (!tbody) return;
 
+    // Destroy existing DataTable if it exists
+    if ($.fn.DataTable.isDataTable('#products-table')) {
+        $('#products-table').DataTable().destroy();
+    }
+
     tbody.innerHTML = '';
 
     if (!Array.isArray(products) || products.length === 0) {
@@ -201,6 +377,73 @@ function displayProducts() {
         `;
         tbody.appendChild(row);
     });
+
+    // Reinitialize DataTable
+    setTimeout(() => {
+        $('#products-table').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
+            },
+            dom: 'Bfrtip',
+            buttons: [
+                'copy', 'csv', 'excel', 'pdf', 'print'
+            ],
+            pageLength: 25,
+            responsive: true,
+            order: [[1, 'asc']]
+        });
+    }, 100);
+}
+
+function displayTransactions(transactions) {
+    const tbody = document.getElementById('transactions-tbody');
+    if (!tbody) return;
+
+    // Destroy existing DataTable if it exists
+    if ($.fn.DataTable.isDataTable('#transactions-table')) {
+        $('#transactions-table').DataTable().destroy();
+    }
+
+    tbody.innerHTML = '';
+
+    if (!Array.isArray(transactions) || transactions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center">Tidak ada transaksi</td></tr>';
+        return;
+    }
+
+    transactions.forEach(transaction => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${transaction.id}</td>
+            <td>${new Date(transaction.transaction_date).toLocaleString('id-ID')}</td>
+            <td>Rp ${formatNumber(transaction.total)}</td>
+            <td>
+                <button class="btn btn-info btn-sm me-1" onclick="viewTransactionDetail(${transaction.id})">
+                    <i class="fas fa-eye"></i> <span class="d-none d-sm-inline">Detail</span>
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="printTransactionReceipt(${transaction.id})">
+                    <i class="fas fa-print"></i> <span class="d-none d-sm-inline">Cetak</span>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+
+    // Reinitialize DataTable
+    setTimeout(() => {
+        $('#transactions-table').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
+            },
+            dom: 'Bfrtip',
+            buttons: [
+                'copy', 'csv', 'excel', 'pdf', 'print'
+            ],
+            pageLength: 25,
+            responsive: true,
+            order: [[1, 'desc']]
+        });
+    }, 100);
 }
 
 function showAddProductModal() {
@@ -798,32 +1041,7 @@ async function loadTransactions() {
     }
 }
 
-function displayTransactions(transactions) {
-    const tbody = document.getElementById('transactions-tbody');
-    if (!tbody) return;
 
-    tbody.innerHTML = '';
-
-    if (!Array.isArray(transactions) || transactions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center">Tidak ada transaksi</td></tr>';
-        return;
-    }
-
-    transactions.forEach(transaction => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${transaction.id}</td>
-            <td>${new Date(transaction.transaction_date).toLocaleString('id-ID')}</td>
-            <td>Rp ${formatNumber(transaction.total)}</td>
-            <td>
-                <button class="btn btn-info btn-sm" onclick="viewTransactionDetail(${transaction.id})">
-                    <i class="fas fa-eye"></i> <span class="d-none d-sm-inline">Detail</span>
-                </button>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
-}
 
 async function viewTransactionDetail(id) {
     try {
@@ -1021,6 +1239,11 @@ function displayInventoryData(inventoryData) {
     const tbody = document.getElementById('inventory-tbody');
     if (!tbody) return;
 
+    // Destroy existing DataTable if it exists
+    if ($.fn.DataTable.isDataTable('#inventory-table')) {
+        $('#inventory-table').DataTable().destroy();
+    }
+
     tbody.innerHTML = '';
 
     if (!Array.isArray(inventoryData) || inventoryData.length === 0) {
@@ -1031,15 +1254,31 @@ function displayInventoryData(inventoryData) {
     inventoryData.forEach(item => {
         const row = document.createElement('tr');
         row.innerHTML = `
+            <td>${new Date(item.created_at).toLocaleDateString('id-ID')}</td>
             <td>${item.product_name || ''}</td>
             <td>${item.quantity || 0}</td>
-            <td>Rp ${formatNumber(item.purchase_price || 0)}</td>
-            <td>Rp ${formatNumber(item.selling_price || 0)}</td>
-            <td>${new Date(item.created_at).toLocaleDateString('id-ID')}</td>
+            <td>${item.stock_before || 0}</td>
+            <td>${item.stock_after || 0}</td>
             <td>${item.notes || '-'}</td>
         `;
         tbody.appendChild(row);
     });
+
+    // Reinitialize DataTable
+    setTimeout(() => {
+        $('#inventory-table').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
+            },
+            dom: 'Bfrtip',
+            buttons: [
+                'copy', 'csv', 'excel', 'pdf', 'print'
+            ],
+            pageLength: 25,
+            responsive: true,
+            order: [[0, 'desc']]
+        });
+    }, 100);
 }
 
 // Update margin label and calculate selling price
@@ -1245,6 +1484,57 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Print receipt for specific transaction
+async function printTransactionReceipt(transactionId) {
+    try {
+        const transaction = await apiRequest(`api/transactions.php?id=${transactionId}`);
+        
+        if (transaction && transaction.id) {
+            let receiptHTML = `
+                <div class="center">
+                    <h6>STRUK TRANSAKSI #${transaction.id}</h6>
+                    <small>${new Date(transaction.transaction_date).toLocaleString('id-ID')}</small>
+                </div>
+                <div class="line"></div>
+                <table>
+            `;
+
+            transaction.items.forEach(item => {
+                receiptHTML += `
+                    <tr>
+                        <td colspan="2">${item.product_name}</td>
+                    </tr>
+                    <tr>
+                        <td>${item.quantity} x Rp ${formatNumber(item.price)}</td>
+                        <td class="right">Rp ${formatNumber(item.subtotal)}</td>
+                    </tr>
+                `;
+            });
+
+            receiptHTML += `
+                </table>
+                <div class="line"></div>
+                <table>
+                    <tr class="total-row">
+                        <td><strong>TOTAL:</strong></td>
+                        <td class="right"><strong>Rp ${formatNumber(transaction.total)}</strong></td>
+                    </tr>
+                </table>
+            `;
+
+            // Show in modal first
+            document.getElementById('transaction-detail').innerHTML = receiptHTML;
+            const modal = new bootstrap.Modal(document.getElementById('transactionModal'));
+            modal.show();
+        } else {
+            showAlert('Transaksi tidak ditemukan!', 'warning');
+        }
+    } catch (error) {
+        console.error('Error loading transaction for print:', error);
+        showAlert('Error loading transaction: ' + error.message, 'danger');
+    }
+}
+
 // Make functions available globally (required for onclick handlers)
 window.showPage = showPage;
 window.loadInventoryData = loadInventoryData;
@@ -1261,6 +1551,7 @@ window.processTransaction = processTransaction;
 window.clearCart = clearCart;
 window.viewTransactionDetail = viewTransactionDetail;
 window.printReceipt = printReceipt;
+window.printTransactionReceipt = printTransactionReceipt;
 window.searchProducts = searchProducts;
 window.calculateChange = calculateChange;
 window.handleSearchKeyPress = handleSearchKeyPress;

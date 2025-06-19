@@ -1,4 +1,7 @@
 <?php
+// Prevent any output before JSON
+ob_start();
+
 session_start();
 require_once '../auth.php';
 require_once '../config/database.php';
@@ -6,6 +9,7 @@ require_once '../config/database.php';
 // Check if user is logged in
 $auth = new Auth();
 if (!$auth->isLoggedIn()) {
+    ob_clean();
     http_response_code(401);
     echo json_encode(['success' => false, 'error' => 'Unauthorized']);
     exit;
@@ -17,12 +21,18 @@ header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    ob_clean();
     exit(0);
 }
 
 try {
     $database = new Database();
     $db = $database->getConnection();
+    
+    if (!$db) {
+        throw new Exception('Database connection failed');
+    }
+    
     $method = $_SERVER['REQUEST_METHOD'];
     
     // Create inventory_log table if it doesn't exist
@@ -148,6 +158,9 @@ try {
     }
 
 } catch (Exception $e) {
+    if (isset($db) && $db && $db->inTransaction()) {
+        $db->rollback();
+    }
     ob_clean();
     http_response_code(400);
     echo json_encode([

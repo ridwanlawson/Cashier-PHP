@@ -36,22 +36,12 @@ document.addEventListener('DOMContentLoaded', function() {
 // Initialize DataTables for all tables
 function initializeDataTables() {
     try {
-        // Products table
-        if ($.fn.DataTable.isDataTable('#products-table')) {
-            $('#products-table').DataTable().destroy();
-        }
-        $('#products-table').DataTable({
-            language: {
-                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
-            },
-            dom: 'Bfrtip',
-            buttons: [
-                'copy', 'csv', 'excel', 'pdf', 'print'
-            ],
-            pageLength: 25,
-            responsive: true,
-            order: [[1, 'asc']]
-        });
+        // Skip initializing tables that will be populated dynamically
+        console.log('DataTables will be initialized when data is loaded');
+    } catch (error) {
+        console.error('Error in DataTables initialization:', error);
+    }
+}
 
         // Transactions table
         if ($.fn.DataTable.isDataTable('#transactions-table')) {
@@ -330,8 +320,13 @@ async function loadProducts() {
             products = result;
             displayProducts();
             console.log('Products loaded successfully');
-        } else if (result.success === false) {
+        } else if (result && result.success === false) {
             throw new Error(result.error || 'Unknown error from server');
+        } else if (result === null || result === undefined) {
+            // Handle empty response
+            products = [];
+            displayProducts();
+            console.log('No products found');
         } else {
             throw new Error('Unexpected response format');
         }
@@ -339,6 +334,7 @@ async function loadProducts() {
         console.error('Error loading products:', error);
         showAlert('Error loading products: ' + error.message, 'danger');
         products = []; // Set to empty array to prevent further errors
+        displayProducts(); // Still display empty table
     }
 }
 
@@ -363,7 +359,7 @@ function displayProducts() {
         row.innerHTML = `
             <td>${product.barcode || ''}</td>
             <td>${product.name || ''}</td>
-            <td class="d-none d-md-table-cell">${product.category || ''}</td>
+            <td>${product.category || ''}</td>
             <td>Rp ${formatNumber(product.price || 0)}</td>
             <td>${product.stock || 0}</td>
             <td>
@@ -378,20 +374,28 @@ function displayProducts() {
         tbody.appendChild(row);
     });
 
-    // Reinitialize DataTable
+    // Reinitialize DataTable with proper column configuration
     setTimeout(() => {
-        $('#products-table').DataTable({
-            language: {
-                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
-            },
-            dom: 'Bfrtip',
-            buttons: [
-                'copy', 'csv', 'excel', 'pdf', 'print'
-            ],
-            pageLength: 25,
-            responsive: true,
-            order: [[1, 'asc']]
-        });
+        try {
+            $('#products-table').DataTable({
+                language: {
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
+                },
+                dom: 'Bfrtip',
+                buttons: [
+                    'copy', 'csv', 'excel', 'pdf', 'print'
+                ],
+                pageLength: 25,
+                responsive: true,
+                order: [[1, 'asc']],
+                columnDefs: [
+                    { targets: [5], orderable: false } // Disable ordering for action column
+                ],
+                autoWidth: false
+            });
+        } catch (error) {
+            console.error('Error initializing products DataTable:', error);
+        }
     }, 100);
 }
 

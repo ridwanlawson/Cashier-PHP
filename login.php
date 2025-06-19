@@ -206,7 +206,12 @@ if ($auth->isLoggedIn()) {
             </div>
             <div class="mb-3">
                 <label for="password" class="form-label">Password</label>
-                <input type="password" class="form-control" id="password" name="password" required>
+                <div class="input-group">
+                    <input type="password" class="form-control" id="password" name="password" required>
+                    <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
+                        <i class="fas fa-eye" id="togglePasswordIcon"></i>
+                    </button>
+                </div>
             </div>
             <button type="submit" class="btn btn-primary">
                 <i class="fas fa-sign-in-alt"></i> Login
@@ -228,6 +233,20 @@ if ($auth->isLoggedIn()) {
             } else {
                 themeIcon.className = 'fas fa-moon';
                 localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Toggle password visibility
+        function togglePassword() {
+            const passwordField = document.getElementById('password');
+            const toggleIcon = document.getElementById('togglePasswordIcon');
+            
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                toggleIcon.className = 'fas fa-eye-slash';
+            } else {
+                passwordField.type = 'password';
+                toggleIcon.className = 'fas fa-eye';
             }
         }
 

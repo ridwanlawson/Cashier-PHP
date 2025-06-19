@@ -14,6 +14,8 @@ $user = $auth->getUser();
     <title>Kasir Digital</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.bootstrap5.min.css" rel="stylesheet">
     <style>
         :root {
             --bg-primary: #0f1419;
@@ -557,6 +559,13 @@ $user = $auth->getUser();
                             <i class="fas fa-warehouse me-2"></i> Barang Masuk
                         </a>
                     </li>
+                    <?php if ($user['role'] === 'admin'): ?>
+                    <li class="nav-item mb-2">
+                        <a class="nav-link" href="#" onclick="showPage('users', this)">
+                            <i class="fas fa-users me-2"></i> Kelola User
+                        </a>
+                    </li>
+                    <?php endif; ?>
                 </ul>
             </div>
 
@@ -607,6 +616,78 @@ $user = $auth->getUser();
                                         <h3 class="text-danger mb-0" id="low-stock">0</h3>
                                     </div>
                                     <i class="fas fa-exclamation-triangle fa-2x text-danger"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="dashboard-card">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="text-secondary mb-1">Total Omzet Bulan Ini</h6>
+                                        <h3 class="text-cyan mb-0" id="monthly-revenue">Rp 0</h3>
+                                    </div>
+                                    <i class="fas fa-chart-line fa-2x text-cyan"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="dashboard-card success">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="text-secondary mb-1">Transaksi Bulan Ini</h6>
+                                        <h3 class="text-success mb-0" id="monthly-transactions">0</h3>
+                                    </div>
+                                    <i class="fas fa-calendar fa-2x text-success"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="dashboard-card warning">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="text-secondary mb-1">Rata-rata per Transaksi</h6>
+                                        <h3 class="text-warning mb-0" id="avg-transaction">Rp 0</h3>
+                                    </div>
+                                    <i class="fas fa-calculator fa-2x text-warning"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="dashboard-card danger">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="text-secondary mb-1">Produk Terlaris</h6>
+                                        <h3 class="text-danger mb-0" id="best-product">-</h3>
+                                    </div>
+                                    <i class="fas fa-star fa-2x text-danger"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Transactions -->
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-clock"></i> Transaksi Terbaru</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="recent-transactions" class="list-group">
+                                        <p class="text-center text-muted">Memuat data...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-exclamation-triangle"></i> Produk Stok Rendah</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="low-stock-products" class="list-group">
+                                        <p class="text-center text-muted">Memuat data...</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -741,12 +822,9 @@ $user = $auth->getUser();
                                 <table class="table table-dark table-striped" id="inventory-table">
                                     <thead>
                                         <tr>
-                                            <th>Tanggal <i class="fas fa-sort" onclick="sortTable('inventory', 'created_at')"></i></th>
-                                            <th>Produk <i class="fas fa-sort" onclick="sortTable('inventory', 'product_name')"></i></th>
+                                            <th>Tanggal</th>
+                                            <th>Produk</th>
                                             <th>Qty</th>
-                                            <th>Harga Beli</th>
-                                            <th>Harga Jual</th>
-                                            <th>Profit</th>
                                             <th>Stok Before</th>
                                             <th>Stok After</th>
                                             <th>Keterangan</th>
@@ -759,6 +837,37 @@ $user = $auth->getUser();
                         </div>
                     </div>
                 </div>
+
+                <!-- Users Management Page (Admin Only) -->
+                <?php if ($user['role'] === 'admin'): ?>
+                <div id="users" class="page-content d-none">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2 class="text-cyan">Kelola User</h2>
+                        <button class="btn btn-primary glow" onclick="showAddUserModal()">
+                            <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">Tambah</span> User
+                        </button>
+                    </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-dark table-striped" id="users-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Username</th>
+                                            <th>Nama</th>
+                                            <th>Role</th>
+                                            <th>Dibuat</th>
+                                            <th>Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="users-tbody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -878,7 +987,57 @@ $user = $auth->getUser();
         </div>
     </div>
 
+    <!-- User Modal (Admin Only) -->
+    <?php if ($user['role'] === 'admin'): ?>
+    <div class="modal fade" id="userModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-cyan" id="userModalTitle">Tambah User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="userForm">
+                        <input type="hidden" id="user-id">
+                        <div class="mb-3">
+                            <label for="user-username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="user-username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="user-name" class="form-label">Nama Lengkap</label>
+                            <input type="text" class="form-control" id="user-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="user-password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="user-password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="user-role" class="form-label">Role</label>
+                            <select class="form-control" id="user-role" required>
+                                <option value="kasir">Kasir</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary" onclick="saveUser()">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.bootstrap5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
     <script src="assets/script.js"></script>
     <script>
         // Mobile menu functions

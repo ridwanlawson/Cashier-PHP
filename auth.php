@@ -1,30 +1,31 @@
 <?php
-class Auth {
-    private $users = [
-        'admin' => [
-            'password' => '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // password: password
-            'name' => 'Administrator',
-            'role' => 'admin'
-        ],
-        'kasir' => [
-            'password' => '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // password: password
-            'name' => 'Kasir',
-            'role' => 'kasir'
-        ]
-    ];
+session_start();
+require_once __DIR__ . '/config/database.php';
 
+class Auth {
     public function login($username, $password) {
-        if (isset($this->users[$username])) {
-            if (password_verify($password, $this->users[$username]['password'])) {
+        try {
+            $database = new Database();
+            $db = $database->getConnection();
+
+            $query = "SELECT * FROM users WHERE username = ? AND password = ?";
+            $stmt = $db->prepare($query);
+            $stmt->execute([$username, $password]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($user) {
                 $_SESSION['user'] = [
-                    'username' => $username,
-                    'name' => $this->users[$username]['name'],
-                    'role' => $this->users[$username]['role']
+                    'id' => (int)$user['id'],
+                    'username' => $user['username'],
+                    'name' => $user['name'],
+                    'role' => $user['role']
                 ];
                 return true;
             }
+            return false;
+        } catch (Exception $e) {
+            return false;
         }
-        return false;
     }
 
     public function logout() {

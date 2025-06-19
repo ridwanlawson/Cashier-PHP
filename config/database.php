@@ -54,14 +54,21 @@ class Database {
                 quantity INTEGER NOT NULL,
                 stock_before INTEGER NOT NULL,
                 stock_after INTEGER NOT NULL,
-                purchase_price REAL DEFAULT 0,
-                selling_price REAL DEFAULT 0,
-                margin_type TEXT DEFAULT 'percentage',
-                margin_value REAL DEFAULT 0,
                 notes TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (product_id) REFERENCES products(id)
-            )"
+            )",
+            "CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                name TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'kasir',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "INSERT OR IGNORE INTO users (username, password, name, role) VALUES 
+             ('admin', 'password', 'Administrator', 'admin'),
+             ('kasir', 'password', 'Kasir', 'kasir')"
         ];
 
         foreach($queries as $query) {

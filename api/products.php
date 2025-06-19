@@ -37,6 +37,23 @@ try {
                 
                 ob_clean();
                 echo json_encode($product ? $product : null);
+            } elseif(isset($_GET['lowstock'])) {
+                // Get low stock products
+                $limit = (int)$_GET['lowstock'];
+                $query = "SELECT * FROM products WHERE stock <= 10 ORDER BY stock ASC LIMIT ?";
+                $stmt = $db->prepare($query);
+                $stmt->execute([$limit]);
+                $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // Convert numeric fields
+                foreach($products as &$product) {
+                    $product['id'] = (int)$product['id'];
+                    $product['price'] = (float)$product['price'];
+                    $product['stock'] = (int)$product['stock'];
+                }
+                
+                ob_clean();
+                echo json_encode($products);
             } elseif(isset($_GET['search'])) {
                 // Search products
                 $search = '%' . $_GET['search'] . '%';

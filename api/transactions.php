@@ -46,6 +46,39 @@ try {
                 $result = $stmt->fetch(PDO::FETCH_ASSOC);
                 $stats['today_revenue'] = $result ? (float)$result['revenue'] : 0;
                 
+                // Monthly revenue
+                $query = "SELECT COALESCE(SUM(total), 0) as revenue FROM transactions WHERE strftime('%Y-%m', transaction_date) = strftime('%Y-%m', 'now')";
+                $stmt = $db->prepare($query);
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                $stats['monthly_revenue'] = $result ? (float)$result['revenue'] : 0;
+                
+                // Monthly transactions
+                $query = "SELECT COUNT(*) as total FROM transactions WHERE strftime('%Y-%m', transaction_date) = strftime('%Y-%m', 'now')";
+                $stmt = $db->prepare($query);
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                $stats['monthly_transactions'] = $result ? (int)$result['total'] : 0;
+                
+                // Average transaction
+                $query = "SELECT COALESCE(AVG(total), 0) as avg_total FROM transactions WHERE strftime('%Y-%m', transaction_date) = strftime('%Y-%m', 'now')";
+                $stmt = $db->prepare($query);
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                $stats['avg_transaction'] = $result ? (float)$result['avg_total'] : 0;
+                
+                // Best selling product
+                $query = "SELECT p.name FROM transaction_items ti 
+                         LEFT JOIN products p ON ti.product_id = p.id 
+                         WHERE strftime('%Y-%m', (SELECT transaction_date FROM transactions WHERE id = ti.transaction_id)) = strftime('%Y-%m', 'now')
+                         GROUP BY ti.product_id 
+                         ORDER BY SUM(ti.quantity) DESC 
+                         LIMIT 1";
+                $stmt = $db->prepare($query);
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                $stats['best_product'] = $result ? $result['name'] : '-';
+                
                 // Low stock products (stock <= 10)
                 $query = "SELECT COUNT(*) as total FROM products WHERE stock <= 10";
                 $stmt = $db->prepare($query);
@@ -55,6 +88,22 @@ try {
                 
                 ob_clean();
                 echo json_encode($stats);
+                
+            } elseif(isset($_GET['recent'])) {
+                // Get recent transactions
+                $limit = (int)$_GET['recent'];
+                $query = "SELECT id, transaction_date, total FROM transactions ORDER BY transaction_date DESC LIMIT ?";
+                $stmt = $db->prepare($query);
+                $stmt->execute([$limit]);
+                $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach($transactions as &$transaction) {
+                    $transaction['id'] = (int)$transaction['id'];
+                    $transaction['total'] = (float)$transaction['total'];
+                }
+                
+                ob_clean();
+                echo json_encode($transactions);
                 
             } elseif(isset($_GET['id'])) {
                 // Get transaction detail

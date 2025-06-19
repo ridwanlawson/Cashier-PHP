@@ -123,9 +123,9 @@ try {
                 $stmt = $db->prepare("UPDATE products SET stock = ?, price = ? WHERE id = ?");
                 $stmt->execute([$stockAfter, $sellingPrice, $productId]);
                 
-                // Insert inventory log with purchase and selling price
-                $stmt = $db->prepare("INSERT INTO inventory_log (product_id, quantity, stock_before, stock_after, purchase_price, selling_price, margin_type, margin_value, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$productId, $quantity, $stockBefore, $stockAfter, $purchasePrice, $sellingPrice, $marginType, $marginValue, $notes]);
+                // Insert inventory log 
+                $stmt = $db->prepare("INSERT INTO inventory_log (product_id, quantity, stock_before, stock_after, notes) VALUES (?, ?, ?, ?, ?)");
+                $stmt->execute([$productId, $quantity, $stockBefore, $stockAfter, $notes]);
                 
                 $db->commit();
                 

@@ -197,6 +197,20 @@ $user = $auth->getUser();
             color: var(--text-secondary);
         }
 
+        .form-control[readonly] {
+            background: var(--bg-tertiary) !important;
+            border: 1px solid var(--border-color) !important;
+            color: var(--text-primary) !important;
+            opacity: 0.8;
+        }
+
+        .form-control[readonly]:focus {
+            background: var(--bg-tertiary) !important;
+            border-color: var(--accent-primary) !important;
+            color: var(--text-primary) !important;
+            box-shadow: 0 0 0 0.2rem rgba(0, 212, 255, 0.25) !important;
+        }
+
         .table-dark {
             background: var(--bg-secondary);
             border-color: var(--border-color);
@@ -384,6 +398,19 @@ $user = $auth->getUser();
             border-color: var(--accent-primary);
             box-shadow: 0 0 0 0.2rem rgba(0, 212, 255, 0.25);
             color: #495057;
+        }
+
+        .light-mode .form-control[readonly] {
+            background: #f8f9fa !important;
+            border: 1px solid #ced4da !important;
+            color: #495057 !important;
+        }
+
+        .light-mode .form-control[readonly]:focus {
+            background: #f8f9fa !important;
+            border-color: var(--accent-primary) !important;
+            color: #495057 !important;
+            box-shadow: 0 0 0 0.2rem rgba(0, 212, 255, 0.25) !important;
         }
 
         .modal-content {

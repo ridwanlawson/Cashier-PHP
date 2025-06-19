@@ -244,6 +244,11 @@ async function saveSettings() {
         if (result.success) {
             showAlert('Pengaturan berhasil disimpan!', 'success');
             appSettings = { ...appSettings, ...formData };
+            
+            // Update cart display if we're on cashier page to reflect tax changes
+            if (cart.length > 0) {
+                updateCart();
+            }
         } else {
             throw new Error(result.error || 'Gagal menyimpan pengaturan');
         }
@@ -661,7 +666,7 @@ function updateCart() {
 
     // Calculate totals
     const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
-    const taxEnabled = appSettings.tax_enabled || false;
+    const taxEnabled = appSettings.tax_enabled === true || appSettings.tax_enabled === 1 || appSettings.tax_enabled === "1";
     const taxRate = parseFloat(appSettings.tax_rate) || 0;
 
     let taxAmount = 0;
@@ -742,7 +747,7 @@ function clearCart() {
 
 function calculateChange() {
     const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
-    const taxEnabled = appSettings.tax_enabled || false;
+    const taxEnabled = appSettings.tax_enabled === true || appSettings.tax_enabled === 1 || appSettings.tax_enabled === "1";
     const taxRate = parseFloat(appSettings.tax_rate) || 0;
 
     let taxAmount = 0;
@@ -768,7 +773,7 @@ async function processTransaction() {
     }
 
     const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
-    const taxEnabled = appSettings.tax_enabled || false;
+    const taxEnabled = appSettings.tax_enabled === true || appSettings.tax_enabled === 1 || appSettings.tax_enabled === "1";
     const taxRate = parseFloat(appSettings.tax_rate) || 0;
 
     let taxAmount = 0;

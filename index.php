@@ -845,19 +845,18 @@ $user = $auth->getUser();
                                     <h5><i class="fas fa-shopping-bag"></i> Keranjang Belanja</h5>
                                 </div>
                                 <div class="card-body">
-                                    <div id="cart-items"></div>
-                                    <hr>
+                                    <div id="cart-items"></div>                                    <hr>
                                     <div class="d-flex justify-content-between">
-                                        <span>Subtotal: </span>
+                                        <span>Subtotal:</span>
                                         <span id="cart-subtotal">Rp 0</span>
                                     </div>
                                     <div class="d-flex justify-content-between" id="tax-line" style="display: none;">
-                                        <span>Pajak: </span>
+                                        <span>Pajak:</span>
                                         <span id="cart-tax">Rp 0</span>
                                     </div>
                                     <div class="d-flex justify-content-between">
-                                        <strong>Total: </strong>
-                                        <strong id="cart-total" class="text-cyan">Rp 0</strong>
+                                        <strong>Total:</strong>
+                                        <strong id="cart-total">Rp 0</strong>
                                     </div>
                                     <div class="mt-3">
                                         <input type="number" class="form-control mb-2" id="payment-amount" 

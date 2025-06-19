@@ -1,4 +1,5 @@
 <?php
+session_start();
 require_once 'auth.php';
 
 $auth = new Auth();
@@ -119,6 +120,33 @@ if ($auth->isLoggedIn()) {
             background: #f8f9fa !important;
             color: #495057 !important;
         }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1);
+        }
+
+        body.light-mode .theme-toggle {
+            background: #495057 !important;
+            color: white !important;
+        }
         
         .btn-primary {
             background: linear-gradient(135deg, #00d4ff, #0891b2);
@@ -150,6 +178,9 @@ if ($auth->isLoggedIn()) {
     </style>
 </head>
 <body>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme">
+        <i class="fas fa-moon" id="themeIcon"></i>
+    </button>
     <div class="login-container">
         <div class="login-header">
             <h2><i class="fas fa-cash-register"></i> Kasir Digital</h2>
@@ -182,5 +213,36 @@ if ($auth->isLoggedIn()) {
             </button>
         </form>
     </div>
+
+    <script>
+        // Dark mode toggle functionality
+        function toggleTheme() {
+            const body = document.body;
+            const themeIcon = document.getElementById('themeIcon');
+            
+            body.classList.toggle('light-mode');
+            
+            if (body.classList.contains('light-mode')) {
+                themeIcon.className = 'fas fa-sun';
+                localStorage.setItem('theme', 'light');
+            } else {
+                themeIcon.className = 'fas fa-moon';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Load saved theme
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme');
+            const themeIcon = document.getElementById('themeIcon');
+            
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-mode');
+                themeIcon.className = 'fas fa-sun';
+            } else {
+                themeIcon.className = 'fas fa-moon';
+            }
+        });
+    </script>
 </body>
 </html>

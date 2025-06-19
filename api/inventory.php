@@ -1,6 +1,16 @@
 
 <?php
+session_start();
+require_once '../auth.php';
 require_once '../config/database.php';
+
+// Check if user is logged in
+$auth = new Auth();
+if (!$auth->isLoggedIn()) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+    exit;
+}
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');

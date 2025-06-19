@@ -816,6 +816,16 @@ async function processTransaction() {
 
 function showReceipt(transactionId, cartItems, total, payment) {
     const change = payment - total;
+    
+    // Store current receipt data for printing
+    window.currentReceiptData = {
+        id: transactionId,
+        items: cartItems,
+        total: total,
+        payment: payment,
+        change: change,
+        transaction_date: new Date().toISOString()
+    };
 
     let receiptHTML = `
         <div class="text-center mb-3">
@@ -825,6 +835,7 @@ function showReceipt(transactionId, cartItems, total, payment) {
             ${appSettings.store_phone ? `<small>Tel: ${appSettings.store_phone}</small><br>` : ''}
             ${appSettings.store_email ? `<small>Email: ${appSettings.store_email}</small><br>` : ''}
             ${appSettings.store_website ? `<small>Web: ${appSettings.store_website}</small><br>` : ''}
+            ${appSettings.store_social_media ? `<small>Social: ${appSettings.store_social_media}</small><br>` : ''}
         </div>
         <div class="border-top border-bottom py-2 mb-2">
             <div class="row">
@@ -887,7 +898,7 @@ function showReceipt(transactionId, cartItems, total, payment) {
         </div>
     `;
 
-    // Show receipt in modal or print
+    // Show receipt in modal
     const receiptModal = new bootstrap.Modal(document.getElementById('transactionModal'));
     document.getElementById('transaction-detail').innerHTML = receiptHTML;
     receiptModal.show();
@@ -1478,35 +1489,72 @@ async function deleteUser(id) {
     }
 }
 
+// Print current receipt (for kasir modal)
+function printCurrentReceipt() {
+    if (window.currentReceiptData) {
+        const receiptHTML = generateReceiptHTML(window.currentReceiptData.items, window.currentReceiptData);
+        
+        // Create print window
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Struk Transaksi #${window.currentReceiptData.id}</title>
+                <style>
+                    body { 
+                        font-family: 'Courier New', monospace; 
+                        font-size: 12px; 
+                        line-height: 1.4; 
+                        max-width: 300px; 
+                        margin: 0 auto; 
+                        padding: 10px;
+                        background: white;
+                        color: black;
+                    }
+                    .text-center { text-align: center; }
+                    .text-left { text-align: left; }
+                    .text-right { text-align: right; }
+                    .separator { border-top: 1px dashed #000; margin: 8px 0; }
+                    .receipt-header { margin-bottom: 15px; }
+                    .receipt-body { margin: 15px 0; }
+                    .receipt-footer { margin-top: 15px; }
+                    table { width: 100%; border-collapse: collapse; }
+                    td { padding: 2px 0; }
+                    .item-line { display: flex; justify-content: space-between; }
+                    .bold { font-weight: bold; }
+                    @media print {
+                        body { margin: 0; padding: 5px; }
+                    }
+                </style>
+            </head>
+            <body>
+                ${receiptHTML}
+                <script>
+                    window.onload = function() {
+                        window.print();
+                        window.onafterprint = function() {
+                            window.close();
+                        }
+                    }
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    } else {
+        showAlert('Data struk tidak tersedia', 'warning');
+    }
+}
+
 // Utility functions
 function formatNumber(number) {
     return new Intl.NumberFormat('id-ID').format(number);
 }
 
+// Legacy print function - redirects to current receipt
 function printReceipt() {
-    const content = document.getElementById('transaction-detail').innerHTML;
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-        <html>
-        <head>
-            <title>Struk Transaksi</title>
-            <style>
-                body { font-family: monospace; font-size: 12px; margin: 20px; }
-                .text-center { text-align: center; }
-                .text-end { text-align: right; }
-                table { width: 100%; border-collapse: collapse; }
-                th, td { padding: 5px; text-align: left; }
-                .border-top { border-top: 1px solid #000; }
-                .border-bottom { border-bottom: 1px solid #000; }
-            </style>
-        </head>
-        <body>
-            ${content}
-        </body>
-        </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
+    printCurrentReceipt();
 }
 
 // Mobile menu functions

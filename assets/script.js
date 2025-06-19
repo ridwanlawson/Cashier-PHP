@@ -1,6 +1,4 @@
-The code has been modified to fix tax calculation in receipt generation and showReceipt function by checking if tax_enabled is true or 1.
-```
-```replit_final_file
+
 // Global variables
 let products = [];
 let cart = [];
@@ -640,7 +638,11 @@ function updateCart() {
             <div class="d-flex justify-content-between align-items-center">
                 <div class="flex-grow-1">
                     <small><strong>${item.name}</strong></small><br>
-                    <small class="text-muted">${appSettings.currency || 'Rp'} ${formatNumber(item.price)} x ${item.quantity}</small>
+                    <small class="text-muted">${appSettings.currency || 'Rp'} ${formatNumber(item.price)} x 
+                        <input type="number" class="form-control form-control-sm d-inline-block" 
+                               style="width: 60px;" value="${item.quantity}" min="1" 
+                               onchange="updateCartItemQuantity(${index}, this.value)">
+                    </small>
                 </div>
                 <div class="text-end">
                     <div class="text-cyan"><strong>${appSettings.currency || 'Rp'} ${formatNumber(item.subtotal)}</strong></div>
@@ -680,6 +682,26 @@ function updateCart() {
 
     // Update change calculation
     calculateChange();
+}
+
+function updateCartItemQuantity(index, newQuantity) {
+    const qty = parseInt(newQuantity);
+    if (qty <= 0) {
+        removeFromCart(index);
+        return;
+    }
+
+    const item = cart[index];
+    const product = products.find(p => p.id === item.product_id);
+
+    if (product && qty <= product.stock) {
+        cart[index].quantity = qty;
+        cart[index].subtotal = cart[index].price * qty;
+        updateCart();
+    } else {
+        showAlert('Stok tidak mencukupi!', 'warning');
+        updateCart(); // Reset to previous value
+    }
 }
 
 function increaseQty(index) {
@@ -907,6 +929,14 @@ function showReceipt(transactionId, cartItems, total, payment) {
     receiptModal.show();
 }
 
+function printTransactionFromModal() {
+    if (window.currentReceiptData) {
+        printCurrentReceipt();
+    } else {
+        showAlert('Data struk tidak tersedia', 'warning');
+    }
+}
+
 // Transaction functions
 async function loadTransactions() {
     try {
@@ -1012,15 +1042,22 @@ async function viewTransactionDetail(transactionId) {
                     <div class="col-6 text-end"><strong>${appSettings.currency || 'Rp'} ${formatNumber(transaction.total)}</strong></div>
                 </div>
             </div>
-            <div class="mt-3">
-                <button class="btn btn-primary" onclick="printTransactionReceipt(${transactionId})">
-                    <i class="fas fa-print"></i> Cetak Struk
-                </button>
-            </div>
         `;
 
         // Show modal with table data
         document.getElementById('transaction-detail').innerHTML = tableHTML;
+        
+        // Update modal footer to only have print button
+        const modalFooter = document.querySelector('#transactionModal .modal-footer');
+        if (modalFooter) {
+            modalFooter.innerHTML = `
+                <button type="button" class="btn btn-primary" onclick="printTransactionReceipt(${transactionId})">
+                    <i class="fas fa-print"></i> Cetak Struk
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            `;
+        }
+        
         new bootstrap.Modal(document.getElementById('transactionModal')).show();
 
     } catch (error) {

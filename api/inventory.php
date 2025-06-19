@@ -1,23 +1,32 @@
+
 <?php
+require_once '../config/database.php';
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
-// Prevent any output before JSON
-ob_start();
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
+}
 
 try {
-    include_once '../config/database.php';
-
-    $database = new Database();
-    $db = $database->getConnection();
-
-    if (!$db) {
-        throw new Exception('Database connection failed');
-    }
-
+    $db = Database::getInstance()->getConnection();
     $method = $_SERVER['REQUEST_METHOD'];
+    
+    // Create inventory_log table if it doesn't exist
+    $createTableQuery = "CREATE TABLE IF NOT EXISTS inventory_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        quantity INTEGER NOT NULL,
+        stock_before INTEGER NOT NULL,
+        stock_after INTEGER NOT NULL,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (product_id) REFERENCES products(id)
+    )";
+    $db->exec($createTableQuery);
 
     switch($method) {
         case 'GET':
@@ -59,63 +68,64 @@ try {
                 throw new Exception('Product ID and quantity are required');
             }
             
-            if ((int)$data['quantity'] <= 0) {
+            $productId = (int)$data['product_id'];
+            $quantity = (int)$data['quantity'];
+            $notes = isset($data['notes']) ? trim($data['notes']) : '';
+            
+            if ($quantity <= 0) {
                 throw new Exception('Quantity must be greater than 0');
             }
             
+            // Begin transaction
             $db->beginTransaction();
             
             try {
-                // Get current stock
-                $query = "SELECT stock FROM products WHERE id = ?";
-                $stmt = $db->prepare($query);
-                $stmt->execute([(int)$data['product_id']]);
+                // Get current product stock
+                $stmt = $db->prepare("SELECT stock FROM products WHERE id = ?");
+                $stmt->execute([$productId]);
                 $product = $stmt->fetch(PDO::FETCH_ASSOC);
                 
                 if (!$product) {
                     throw new Exception('Product not found');
                 }
                 
-                $currentStock = (int)$product['stock'];
-                $newStock = $currentStock + (int)$data['quantity'];
+                $stockBefore = (int)$product['stock'];
+                $stockAfter = $stockBefore + $quantity;
                 
                 // Update product stock
-                $query = "UPDATE products SET stock = ? WHERE id = ?";
-                $stmt = $db->prepare($query);
-                $stmt->execute([$newStock, (int)$data['product_id']]);
+                $stmt = $db->prepare("UPDATE products SET stock = ? WHERE id = ?");
+                $stmt->execute([$stockAfter, $productId]);
                 
-                // Log inventory change
-                $query = "INSERT INTO inventory_log (product_id, quantity, stock_before, stock_after, notes, created_at) 
-                         VALUES (?, ?, ?, ?, ?, datetime('now'))";
-                $stmt = $db->prepare($query);
-                $stmt->execute([
-                    (int)$data['product_id'],
-                    (int)$data['quantity'],
-                    $currentStock,
-                    $newStock,
-                    isset($data['notes']) ? trim($data['notes']) : null
-                ]);
+                // Insert inventory log
+                $stmt = $db->prepare("INSERT INTO inventory_log (product_id, quantity, stock_before, stock_after, notes) VALUES (?, ?, ?, ?, ?)");
+                $stmt->execute([$productId, $quantity, $stockBefore, $stockAfter, $notes]);
                 
                 $db->commit();
-                ob_clean();
-                echo json_encode(['success' => true, 'message' => 'Stock added successfully']);
                 
-            } catch(Exception $e) {
-                $db->rollback();
+                ob_clean();
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Stock added successfully',
+                    'stock_before' => $stockBefore,
+                    'stock_after' => $stockAfter
+                ]);
+                
+            } catch (Exception $e) {
+                $db->rollBack();
                 throw $e;
             }
             break;
             
         default:
-            ob_clean();
-            echo json_encode(['success' => false, 'error' => 'Method not allowed']);
-            break;
+            throw new Exception('Method not allowed');
     }
-} catch(Exception $e) {
-    if (isset($db) && $db && $db->inTransaction()) {
-        $db->rollback();
-    }
+
+} catch (Exception $e) {
     ob_clean();
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'error' => $e->getMessage()
+    ]);
 }
 ?>

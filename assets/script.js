@@ -977,11 +977,22 @@ async function addStock() {
 
 async function loadInventoryData() {
     try {
+        console.log('Loading inventory data...');
         const inventoryData = await apiRequest('api/inventory.php');
-        displayInventoryData(inventoryData);
+        
+        if (Array.isArray(inventoryData)) {
+            displayInventoryData(inventoryData);
+            console.log('Inventory data loaded successfully');
+        } else if (inventoryData.success === false) {
+            throw new Error(inventoryData.error || 'Unknown error from server');
+        } else {
+            throw new Error('Unexpected response format');
+        }
     } catch (error) {
         console.error('Error loading inventory data:', error);
         showAlert('Error loading inventory data: ' + error.message, 'danger');
+        // Show empty table instead of leaving it blank
+        displayInventoryData([]);
     }
 }
 
@@ -1052,7 +1063,23 @@ function applyTheme(theme) {
             table.classList.add('table-light');
         });
         
-        document.body.style.background = 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)';
+        // Force update body background
+        document.body.style.setProperty('background', 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)', 'important');
+        document.body.style.setProperty('color', '#212529', 'important');
+        
+        // Update sidebar and main content
+        const sidebar = document.querySelector('.sidebar');
+        const mainContent = document.querySelector('.main-content');
+        
+        if (sidebar) {
+            sidebar.style.setProperty('background', 'linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%)', 'important');
+            sidebar.style.setProperty('border-right', '2px solid #dee2e6', 'important');
+        }
+        
+        if (mainContent) {
+            mainContent.style.setProperty('background', '#f8f9fa', 'important');
+        }
+        
     } else {
         document.body.classList.add('dark-mode');
         document.body.classList.remove('light-mode');
@@ -1071,7 +1098,22 @@ function applyTheme(theme) {
             table.classList.add('table-dark');
         });
         
-        document.body.style.background = 'linear-gradient(135deg, #0f1419 0%, #1a202c 100%)';
+        // Force update body background
+        document.body.style.setProperty('background', 'linear-gradient(135deg, #0f1419 0%, #1a202c 100%)', 'important');
+        document.body.style.setProperty('color', '#e2e8f0', 'important');
+        
+        // Reset sidebar and main content styles
+        const sidebar = document.querySelector('.sidebar');
+        const mainContent = document.querySelector('.main-content');
+        
+        if (sidebar) {
+            sidebar.style.removeProperty('background');
+            sidebar.style.removeProperty('border-right');
+        }
+        
+        if (mainContent) {
+            mainContent.style.removeProperty('background');
+        }
     }
 }
 

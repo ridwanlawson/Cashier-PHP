@@ -289,15 +289,85 @@ $user = $auth->getUser();
         }
 
         /* Light Mode Specific Styles */
+        .light-mode {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+            color: #212529 !important;
+        }
+
         .light-mode .btn-outline-light {
-            border-color: #6c757d;
-            color: #495057;
+            border-color: #495057 !important;
+            color: #495057 !important;
+            background-color: transparent !important;
         }
 
         .light-mode .btn-outline-light:hover {
-            background-color: var(--accent-primary);
-            border-color: var(--accent-primary);
-            color: white;
+            background-color: var(--accent-primary) !important;
+            border-color: var(--accent-primary) !important;
+            color: white !important;
+        }
+
+        .light-mode .sidebar {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%) !important;
+            border-right: 2px solid #dee2e6 !important;
+            color: #212529 !important;
+        }
+
+        .light-mode .main-content {
+            background: #f8f9fa !important;
+            color: #212529 !important;
+        }
+
+        .light-mode .nav-link {
+            color: #495057 !important;
+        }
+
+        .light-mode .nav-link:hover {
+            color: var(--accent-primary) !important;
+            background: rgba(0, 212, 255, 0.1) !important;
+        }
+
+        .light-mode .nav-link.active {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)) !important;
+            color: white !important;
+        }
+
+        .light-mode .sidebar h4 {
+            color: var(--accent-primary) !important;
+            border-bottom: 1px solid #dee2e6 !important;
+        }
+
+        .light-mode .dashboard-card {
+            background: linear-gradient(135deg, #ffffff, #f8f9fa) !important;
+            border: 1px solid #dee2e6 !important;
+            color: #212529 !important;
+        }
+
+        .light-mode .user-info-sidebar {
+            background: #f8f9fa !important;
+            border: 1px solid #dee2e6 !important;
+            color: #212529 !important;
+        }
+
+        .light-mode .text-secondary {
+            color: #6c757d !important;
+        }
+
+        .light-mode .mobile-header {
+            background: #ffffff !important;
+            border-bottom: 1px solid #dee2e6 !important;
+            color: #212529 !important;
+        }
+
+        .light-mode .list-group-item {
+            background: #ffffff !important;
+            border-color: #dee2e6 !important;
+            color: #212529 !important;
+        }
+
+        .light-mode .cart-item {
+            background: #f8f9fa !important;
+            border: 1px solid #dee2e6 !important;
+            color: #212529 !important;
         }
 
         .light-mode .form-control {

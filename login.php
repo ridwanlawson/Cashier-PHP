@@ -31,24 +31,48 @@ if ($auth->isLoggedIn()) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        :root {
+            --bg-primary: #0f1419;
+            --bg-secondary: #1a202c;
+            --bg-tertiary: #2d3748;
+            --accent-primary: #00d4ff;
+            --text-primary: #e2e8f0;
+            --text-secondary: #a0aec0;
+            --border-color: #374151;
+        }
+
         body {
-            background: linear-gradient(135deg, #0f1419 0%, #1a202c 100%);
-            color: #e2e8f0;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            color: var(--text-primary);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        body.light-mode {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+            color: #212529 !important;
         }
         
         .login-container {
-            background: #1a202c;
-            border: 1px solid #374151;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
             border-radius: 15px;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
             padding: 2rem;
             max-width: 400px;
             width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        body.light-mode .login-container {
+            background: #ffffff !important;
+            border: 1px solid #dee2e6 !important;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+            color: #212529 !important;
         }
         
         .login-header {
@@ -62,17 +86,39 @@ if ($auth->isLoggedIn()) {
         }
         
         .form-control {
-            background: #2d3748;
-            border: 1px solid #374151;
-            color: #e2e8f0;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
             margin-bottom: 1rem;
+            transition: all 0.3s ease;
         }
         
         .form-control:focus {
-            background: #2d3748;
-            border-color: #00d4ff;
+            background: var(--bg-tertiary);
+            border-color: var(--accent-primary);
             box-shadow: 0 0 0 0.2rem rgba(0, 212, 255, 0.25);
-            color: #e2e8f0;
+            color: var(--text-primary);
+        }
+
+        body.light-mode .form-control {
+            background: #ffffff !important;
+            border: 1px solid #ced4da !important;
+            color: #495057 !important;
+        }
+
+        body.light-mode .form-control:focus {
+            background: #ffffff !important;
+            border-color: var(--accent-primary) !important;
+            color: #495057 !important;
+        }
+
+        body.light-mode .login-header h2 {
+            color: var(--accent-primary) !important;
+        }
+
+        body.light-mode .user-info {
+            background: #f8f9fa !important;
+            color: #495057 !important;
         }
         
         .btn-primary {
@@ -95,11 +141,12 @@ if ($auth->isLoggedIn()) {
         }
         
         .user-info {
-            background: #2d3748;
+            background: var(--bg-tertiary);
             border-radius: 10px;
             padding: 1rem;
             margin-bottom: 1rem;
             font-size: 0.875rem;
+            transition: all 0.3s ease;
         }
     </style>
 </head>

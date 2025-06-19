@@ -1,0 +1,1125 @@
+
+// Global variables
+let products = [];
+let cart = [];
+let selectedProduct = null;
+
+// Initialize application
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing app...');
+    loadDashboardStats();
+    loadProducts();
+
+    // Add event listeners
+    const searchProduct = document.getElementById('search-product');
+    const paymentAmount = document.getElementById('payment-amount');
+    
+    if (searchProduct) {
+        searchProduct.addEventListener('input', debounce(searchProducts, 300));
+        searchProduct.addEventListener('keypress', handleSearchKeyPress);
+    }
+    if (paymentAmount) {
+        paymentAmount.addEventListener('input', calculateChange);
+    }
+});
+
+// Debounce function to limit API calls
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Page Navigation
+function showPage(pageId, element) {
+    console.log('Showing page:', pageId);
+    
+    // Hide all pages
+    document.querySelectorAll('.page-content').forEach(page => {
+        page.classList.add('d-none');
+    });
+
+    // Show selected page
+    const targetPage = document.getElementById(pageId);
+    if (targetPage) {
+        targetPage.classList.remove('d-none');
+    }
+
+    // Update navigation
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('active');
+    });
+    if (element) {
+        element.classList.add('active');
+    }
+
+    // Load page-specific data
+    switch(pageId) {
+        case 'dashboard':
+            loadDashboardStats();
+            break;
+        case 'products':
+            loadProducts();
+            break;
+        case 'cashier':
+            loadProducts();
+            break;
+        case 'transactions':
+            loadTransactions();
+            break;
+        case 'inventory':
+            loadInventoryData();
+            break;
+    }
+}
+
+// API Helper function
+async function apiRequest(url, options = {}) {
+    const defaultOptions = {
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    };
+    
+    const finalOptions = { ...defaultOptions, ...options };
+    
+    try {
+        const response = await fetch(url, finalOptions);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const text = await response.text();
+        
+        if (!text.trim()) {
+            throw new Error('Empty response from server');
+        }
+        
+        try {
+            return JSON.parse(text);
+        } catch (jsonError) {
+            console.error('JSON Parse Error:', jsonError);
+            console.error('Response text:', text);
+            throw new Error('Invalid JSON response from server');
+        }
+    } catch (error) {
+        console.error('API Request Error:', error);
+        throw error;
+    }
+}
+
+// Dashboard Functions
+async function loadDashboardStats() {
+    try {
+        console.log('Loading dashboard stats...');
+        const stats = await apiRequest('api/transactions.php?stats=1');
+        
+        if (stats.success === false) {
+            throw new Error(stats.error || 'Unknown error from server');
+        }
+
+        const totalProducts = document.getElementById('total-products');
+        const todayTransactions = document.getElementById('today-transactions');
+        const todayRevenue = document.getElementById('today-revenue');
+        const lowStock = document.getElementById('low-stock');
+
+        if (totalProducts) totalProducts.textContent = stats.total_products || 0;
+        if (todayTransactions) todayTransactions.textContent = stats.today_transactions || 0;
+        if (todayRevenue) todayRevenue.textContent = 'Rp ' + formatNumber(stats.today_revenue || 0);
+        if (lowStock) lowStock.textContent = stats.low_stock || 0;
+        
+        console.log('Dashboard stats loaded successfully');
+    } catch (error) {
+        console.error('Error loading stats:', error);
+        showAlert('Error loading dashboard stats: ' + error.message, 'danger');
+    }
+}
+
+// Products Management
+async function loadProducts() {
+    try {
+        console.log('Loading products...');
+        const result = await apiRequest('api/products.php');
+        
+        if (Array.isArray(result)) {
+            products = result;
+            displayProducts();
+            console.log('Products loaded successfully');
+        } else if (result.success === false) {
+            throw new Error(result.error || 'Unknown error from server');
+        } else {
+            throw new Error('Unexpected response format');
+        }
+    } catch (error) {
+        console.error('Error loading products:', error);
+        showAlert('Error loading products: ' + error.message, 'danger');
+        products = []; // Set to empty array to prevent further errors
+    }
+}
+
+function displayProducts() {
+    const tbody = document.getElementById('products-tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    if (!Array.isArray(products) || products.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">Tidak ada produk</td></tr>';
+        return;
+    }
+
+    products.forEach(product => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${product.barcode || ''}</td>
+            <td>${product.name || ''}</td>
+            <td class="d-none d-md-table-cell">${product.category || ''}</td>
+            <td>Rp ${formatNumber(product.price || 0)}</td>
+            <td>${product.stock || 0}</td>
+            <td>
+                <button class="btn btn-warning btn-sm me-1 mb-1" onclick="editProduct(${product.id})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-danger btn-sm mb-1" onclick="deleteProduct(${product.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function showAddProductModal() {
+    const modalTitle = document.getElementById('productModalTitle');
+    const productForm = document.getElementById('productForm');
+    const productId = document.getElementById('product-id');
+
+    if (modalTitle) modalTitle.textContent = 'Tambah Produk';
+    if (productForm) productForm.reset();
+    if (productId) productId.value = '';
+
+    const modal = new bootstrap.Modal(document.getElementById('productModal'));
+    modal.show();
+}
+
+function editProduct(id) {
+    const product = products.find(p => p.id == id);
+    if (!product) return;
+
+    const modalTitle = document.getElementById('productModalTitle');
+    const productId = document.getElementById('product-id');
+    const productName = document.getElementById('product-name');
+    const productCategory = document.getElementById('product-category');
+    const productPrice = document.getElementById('product-price');
+    const productStock = document.getElementById('product-stock');
+    const productBarcode = document.getElementById('product-barcode');
+
+    if (modalTitle) modalTitle.textContent = 'Edit Produk';
+    if (productId) productId.value = product.id;
+    if (productName) productName.value = product.name;
+    if (productCategory) productCategory.value = product.category;
+    if (productPrice) productPrice.value = product.price;
+    if (productStock) productStock.value = product.stock;
+    if (productBarcode) productBarcode.value = product.barcode;
+
+    const modal = new bootstrap.Modal(document.getElementById('productModal'));
+    modal.show();
+}
+
+async function saveProduct() {
+    const id = document.getElementById('product-id').value;
+    const name = document.getElementById('product-name').value.trim();
+    const category = document.getElementById('product-category').value.trim();
+    const price = document.getElementById('product-price').value;
+    const stock = document.getElementById('product-stock').value;
+    const barcode = document.getElementById('product-barcode').value.trim();
+
+    if (!name || !category || !price || !stock || !barcode) {
+        showAlert('Semua field harus diisi!', 'warning');
+        return;
+    }
+
+    if (parseFloat(price) <= 0) {
+        showAlert('Harga harus lebih dari 0!', 'warning');
+        return;
+    }
+
+    if (parseInt(stock) < 0) {
+        showAlert('Stok tidak boleh negatif!', 'warning');
+        return;
+    }
+
+    const productData = {
+        name: name,
+        category: category,
+        price: parseFloat(price),
+        stock: parseInt(stock),
+        barcode: barcode
+    };
+
+    if (id) {
+        productData.id = parseInt(id);
+    }
+
+    try {
+        console.log('Saving product:', productData);
+        const result = await apiRequest('api/products.php', {
+            method: id ? 'PUT' : 'POST',
+            body: JSON.stringify(productData)
+        });
+
+        if (result.success) {
+            loadProducts();
+            const modal = bootstrap.Modal.getInstance(document.getElementById('productModal'));
+            if (modal) modal.hide();
+            showAlert(id ? 'Produk berhasil diupdate!' : 'Produk berhasil ditambahkan!', 'success');
+        } else {
+            showAlert('Error: ' + (result.error || 'Unknown error'), 'danger');
+        }
+    } catch (error) {
+        console.error('Error saving product:', error);
+        showAlert('Error saving product: ' + error.message, 'danger');
+    }
+}
+
+async function deleteProduct(id) {
+    if (confirm('Apakah Anda yakin ingin menghapus produk ini?')) {
+        try {
+            const result = await apiRequest(`api/products.php?id=${id}`, {
+                method: 'DELETE'
+            });
+
+            if (result.success) {
+                loadProducts();
+                showAlert('Produk berhasil dihapus!', 'success');
+            } else {
+                showAlert('Error: ' + (result.error || 'Unknown error'), 'danger');
+            }
+        } catch (error) {
+            console.error('Error deleting product:', error);
+            showAlert('Error deleting product: ' + error.message, 'danger');
+        }
+    }
+}
+
+// Cashier Functions
+async function searchProducts() {
+    const searchTerm = document.getElementById('search-product').value;
+    if (searchTerm.length < 2) {
+        document.getElementById('product-suggestions').innerHTML = '';
+        return;
+    }
+
+    try {
+        const searchResults = await apiRequest(`api/products.php?search=${encodeURIComponent(searchTerm)}`);
+        displayProductSuggestions(searchResults);
+    } catch (error) {
+        console.error('Error searching products:', error);
+    }
+}
+
+function displayProductSuggestions(searchResults) {
+    const container = document.getElementById('product-suggestions');
+    if (!container) return;
+    
+    container.innerHTML = '';
+
+    if (!Array.isArray(searchResults) || searchResults.length === 0) {
+        return;
+    }
+
+    searchResults.forEach(product => {
+        const item = document.createElement('div');
+        item.className = 'list-group-item list-group-item-action';
+        item.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-1">${product.name}</h6>
+                    <small>Stok: ${product.stock} | Rp ${formatNumber(product.price)}</small>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="selectProduct(${product.id})">Pilih</button>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+function selectProduct(id) {
+    selectedProduct = products.find(p => p.id == id);
+    if (selectedProduct) {
+        addToCartDirectly();
+    }
+}
+
+function addToCart() {
+    if (!selectedProduct) {
+        showAlert('Pilih produk terlebih dahulu!', 'warning');
+        return;
+    }
+
+    addToCartDirectly();
+}
+
+function addToCartDirectly() {
+    if (!selectedProduct) return;
+
+    const qtyInput = document.getElementById('product-qty');
+    const qty = parseInt(qtyInput ? qtyInput.value : 1) || 1;
+
+    if (qty > selectedProduct.stock) {
+        showAlert('Stok tidak mencukupi!', 'warning');
+        return;
+    }
+
+    const existingItem = cart.find(item => item.product_id === selectedProduct.id);
+
+    if (existingItem) {
+        const newQty = existingItem.quantity + qty;
+        if (newQty > selectedProduct.stock) {
+            showAlert('Stok tidak mencukupi!', 'warning');
+            return;
+        }
+        existingItem.quantity = newQty;
+        existingItem.subtotal = existingItem.quantity * existingItem.price;
+    } else {
+        cart.push({
+            product_id: selectedProduct.id,
+            name: selectedProduct.name,
+            price: selectedProduct.price,
+            quantity: qty,
+            subtotal: selectedProduct.price * qty
+        });
+    }
+
+    displayCart();
+    
+    const searchInput = document.getElementById('search-product');
+    const qtyInputField = document.getElementById('product-qty');
+    const suggestions = document.getElementById('product-suggestions');
+    
+    if (searchInput) searchInput.value = '';
+    if (qtyInputField) qtyInputField.value = '1';
+    if (suggestions) suggestions.innerHTML = '';
+    selectedProduct = null;
+    
+    showAlert('Produk ditambahkan ke keranjang!', 'success');
+}
+
+// Handle search input with Enter key
+function handleSearchKeyPress(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        quickAddToCart();
+    }
+}
+
+// Quick add to cart function
+async function quickAddToCart() {
+    const searchTerm = document.getElementById('search-product').value.trim();
+    if (!searchTerm) {
+        showAlert('Masukkan nama produk atau barcode!', 'warning');
+        return;
+    }
+
+    try {
+        // Search for exact barcode match first
+        let product = await apiRequest(`api/products.php?barcode=${encodeURIComponent(searchTerm)}`);
+        
+        // If no exact barcode match, search by name
+        if (!product) {
+            const searchResults = await apiRequest(`api/products.php?search=${encodeURIComponent(searchTerm)}`);
+            if (Array.isArray(searchResults) && searchResults.length > 0) {
+                product = searchResults[0]; // Take first result
+            }
+        }
+
+        if (product && product.id) {
+            selectedProduct = product;
+            addToCartDirectly();
+            
+            // Clear suggestions
+            const suggestions = document.getElementById('product-suggestions');
+            if (suggestions) suggestions.innerHTML = '';
+        } else {
+            showAlert('Produk tidak ditemukan!', 'warning');
+        }
+    } catch (error) {
+        console.error('Error in quick add:', error);
+        showAlert('Error mencari produk: ' + error.message, 'danger');
+    }
+}
+
+function displayCart() {
+    const container = document.getElementById('cart-items');
+    if (!container) return;
+    
+    container.innerHTML = '';
+
+    if (cart.length === 0) {
+        container.innerHTML = '<p class="text-center text-muted">Keranjang kosong</p>';
+        updateCartTotal();
+        return;
+    }
+
+    cart.forEach((item, index) => {
+        const cartItem = document.createElement('div');
+        cartItem.className = 'cart-item p-2 mb-2';
+        cartItem.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <strong class="text-truncate me-2">${item.name}</strong>
+                <button class="btn btn-danger btn-sm" onclick="removeFromCart(${index})">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-outline-light btn-sm me-1" onclick="changeCartQuantity(${index}, -1)">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <input type="number" class="form-control form-control-sm text-center me-1" 
+                           style="width: 60px;" value="${item.quantity}" 
+                           onchange="updateCartQuantity(${index}, this.value)" min="1">
+                    <button class="btn btn-outline-light btn-sm" onclick="changeCartQuantity(${index}, 1)">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                <span>Rp ${formatNumber(item.price)}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span>Subtotal:</span>
+                <strong>Rp ${formatNumber(item.subtotal)}</strong>
+            </div>
+        `;
+        container.appendChild(cartItem);
+    });
+
+    updateCartTotal();
+}
+
+function removeFromCart(index) {
+    cart.splice(index, 1);
+    displayCart();
+    showAlert('Item dihapus dari keranjang!', 'info');
+}
+
+function changeCartQuantity(index, change) {
+    const item = cart[index];
+    const newQuantity = item.quantity + change;
+    
+    if (newQuantity <= 0) {
+        removeFromCart(index);
+        return;
+    }
+    
+    // Check stock availability
+    const product = products.find(p => p.id === item.product_id);
+    if (product && newQuantity > product.stock) {
+        showAlert('Stok tidak mencukupi!', 'warning');
+        return;
+    }
+    
+    item.quantity = newQuantity;
+    item.subtotal = item.quantity * item.price;
+    displayCart();
+}
+
+function updateCartQuantity(index, newQuantity) {
+    const qty = parseInt(newQuantity);
+    if (isNaN(qty) || qty <= 0) {
+        removeFromCart(index);
+        return;
+    }
+    
+    const item = cart[index];
+    
+    // Check stock availability
+    const product = products.find(p => p.id === item.product_id);
+    if (product && qty > product.stock) {
+        showAlert('Stok tidak mencukupi!', 'warning');
+        // Reset to current quantity
+        displayCart();
+        return;
+    }
+    
+    item.quantity = qty;
+    item.subtotal = item.quantity * item.price;
+    displayCart();
+}
+
+function updateCartTotal() {
+    const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
+    const cartTotal = document.getElementById('cart-total');
+    if (cartTotal) {
+        cartTotal.textContent = `Rp ${formatNumber(total)}`;
+    }
+    calculateChange();
+}
+
+function calculateChange() {
+    const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
+    const paymentInput = document.getElementById('payment-amount');
+    const changeElement = document.getElementById('change-amount');
+
+    if (paymentInput && changeElement) {
+        const payment = parseFloat(paymentInput.value) || 0;
+        const change = payment - total;
+        changeElement.textContent = `Rp ${formatNumber(Math.max(0, change))}`;
+    }
+}
+
+async function processTransaction() {
+    if (cart.length === 0) {
+        showAlert('Keranjang masih kosong!', 'warning');
+        return;
+    }
+
+    const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
+    const paymentInput = document.getElementById('payment-amount');
+    const payment = parseFloat(paymentInput ? paymentInput.value : 0) || 0;
+
+    if (payment < total) {
+        showAlert('Jumlah pembayaran kurang!', 'warning');
+        return;
+    }
+
+    // Validate cart items against current stock
+    for (let item of cart) {
+        const currentProduct = products.find(p => p.id === item.product_id);
+        if (!currentProduct) {
+            showAlert(`Produk ${item.name} tidak ditemukan!`, 'danger');
+            return;
+        }
+        if (currentProduct.stock < item.quantity) {
+            showAlert(`Stok ${item.name} tidak mencukupi! (Tersedia: ${currentProduct.stock})`, 'warning');
+            return;
+        }
+    }
+
+    try {
+        console.log('Processing transaction:', { total, items_count: cart.length });
+        
+        const transactionData = {
+            total: total,
+            items: cart.map(item => ({
+                product_id: item.product_id,
+                quantity: item.quantity,
+                price: item.price,
+                subtotal: item.subtotal
+            }))
+        };
+
+        const result = await apiRequest('api/transactions.php', {
+            method: 'POST',
+            body: JSON.stringify(transactionData)
+        });
+
+        if (result.success) {
+            showAlert('Transaksi berhasil!', 'success');
+
+            // Show receipt
+            showReceipt(result.transaction_id, cart, total, payment);
+
+            // Clear cart
+            clearCart();
+
+            // Reload products to update stock
+            loadProducts();
+            
+            // Reload inventory data if inventory page is currently visible
+            if (!document.getElementById('inventory').classList.contains('d-none')) {
+                loadInventoryData();
+            }
+        } else {
+            showAlert('Error: ' + (result.error || 'Unknown error'), 'danger');
+        }
+    } catch (error) {
+        console.error('Error processing transaction:', error);
+        showAlert('Error processing transaction: ' + error.message, 'danger');
+    }
+}
+
+function clearCart() {
+    cart = [];
+    displayCart();
+    const paymentInput = document.getElementById('payment-amount');
+    if (paymentInput) paymentInput.value = '';
+    selectedProduct = null;
+}
+
+function showReceipt(transactionId, items, total, payment) {
+    const now = new Date();
+    const receiptContent = `
+        <div class="receipt-container" style="width: 58mm; max-width: 220px; margin: 0 auto; font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.2; color: #000;">
+            <div class="text-center" style="text-align: center;">
+                <div style="font-size: 14px; font-weight: bold; margin-bottom: 2px;">KASIR DIGITAL</div>
+                <div style="font-size: 9px; margin: 1px 0;">Jl. Replit Store No. 123</div>
+                <div style="font-size: 9px; margin: 1px 0;">Telp: 021-12345678</div>
+                <div style="border-top: 1px dashed #000; margin: 8px 0; width: 100%;"></div>
+                <div style="font-size: 11px; margin: 2px 0;">No: ${String(transactionId).padStart(6, '0')}</div>
+                <div style="font-size: 9px; margin: 1px 0;">${now.toLocaleDateString('id-ID', {day: '2-digit', month: '2-digit', year: 'numeric'})}</div>
+                <div style="font-size: 9px; margin: 1px 0;">${now.toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit', second: '2-digit'})}</div>
+                <div style="font-size: 9px; margin: 1px 0;">Kasir: Admin</div>
+                <div style="border-top: 1px dashed #000; margin: 8px 0; width: 100%;"></div>
+            </div>
+            <div style="font-size: 9px;">
+                ${items.map(item => {
+                    const itemName = item.name.length > 20 ? item.name.substring(0, 20) + '...' : item.name;
+                    const qtyPrice = `${item.quantity} x ${formatNumber(item.price)}`;
+                    const subtotal = formatNumber(item.subtotal);
+                    return `
+                        <div style="margin-bottom: 4px;">
+                            <div style="font-weight: bold; margin-bottom: 1px;">${itemName}</div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 8px;">${qtyPrice}</span>
+                                <span style="font-weight: bold; font-size: 9px;">${subtotal}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+                <div style="border-top: 1px dashed #000; margin: 8px 0; width: 100%;"></div>
+                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 11px; margin: 3px 0;">
+                    <span>TOTAL</span>
+                    <span>Rp ${formatNumber(total)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin: 2px 0; font-size: 10px;">
+                    <span>TUNAI</span>
+                    <span>Rp ${formatNumber(payment)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 10px;">
+                    <span>KEMBALI</span>
+                    <span>Rp ${formatNumber(payment - total)}</span>
+                </div>
+                <div style="border-top: 1px dashed #000; margin: 8px 0; width: 100%;"></div>
+                <div style="text-align: center; font-size: 8px;">
+                    <div style="margin: 2px 0;">Terima kasih atas kunjungan Anda</div>
+                    <div style="margin: 2px 0;">Barang yang sudah dibeli</div>
+                    <div style="margin: 2px 0;">tidak dapat ditukar</div>
+                    <div style="margin: 2px 0;">Simpan struk ini sebagai</div>
+                    <div style="margin: 2px 0;">bukti pembayaran yang sah</div>
+                    <div style="margin: 8px 0; font-size: 7px;">*** STRUK ASLI ***</div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const transactionDetail = document.getElementById('transaction-detail');
+    if (transactionDetail) {
+        transactionDetail.innerHTML = receiptContent;
+        const modal = new bootstrap.Modal(document.getElementById('transactionModal'));
+        modal.show();
+    }
+}
+
+// Transactions Functions
+async function loadTransactions() {
+    try {
+        console.log('Loading transactions...');
+        const transactions = await apiRequest('api/transactions.php');
+        
+        if (Array.isArray(transactions)) {
+            displayTransactions(transactions);
+            console.log('Transactions loaded successfully');
+        } else if (transactions.success === false) {
+            throw new Error(transactions.error || 'Unknown error from server');
+        } else {
+            throw new Error('Unexpected response format');
+        }
+    } catch (error) {
+        console.error('Error loading transactions:', error);
+        showAlert('Error loading transactions: ' + error.message, 'danger');
+    }
+}
+
+function displayTransactions(transactions) {
+    const tbody = document.getElementById('transactions-tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    if (!Array.isArray(transactions) || transactions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center">Tidak ada transaksi</td></tr>';
+        return;
+    }
+
+    transactions.forEach(transaction => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${transaction.id}</td>
+            <td>${new Date(transaction.transaction_date).toLocaleString('id-ID')}</td>
+            <td>Rp ${formatNumber(transaction.total)}</td>
+            <td>
+                <button class="btn btn-info btn-sm" onclick="viewTransactionDetail(${transaction.id})">
+                    <i class="fas fa-eye"></i> <span class="d-none d-sm-inline">Detail</span>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+async function viewTransactionDetail(id) {
+    try {
+        const transaction = await apiRequest(`api/transactions.php?id=${id}`);
+
+        if (transaction && transaction.id) {
+            const detailContent = `
+                <div class="text-center mb-3">
+                    <h5>Detail Transaksi #${transaction.id}</h5>
+                    <p>Tanggal: ${new Date(transaction.transaction_date).toLocaleString('id-ID')}</p>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-dark">
+                        <thead>
+                            <tr>
+                                <th>Produk</th>
+                                <th>Qty</th>
+                                <th>Harga</th>
+                                <th>Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${transaction.items.map(item => `
+                                <tr>
+                                    <td>${item.product_name}</td>
+                                    <td>${item.quantity}</td>
+                                    <td>Rp ${formatNumber(item.price)}</td>
+                                    <td>Rp ${formatNumber(item.subtotal)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-end">
+                    <h5>Total: Rp ${formatNumber(transaction.total)}</h5>
+                </div>
+            `;
+
+            const transactionDetail = document.getElementById('transaction-detail');
+            if (transactionDetail) {
+                transactionDetail.innerHTML = detailContent;
+                const modal = new bootstrap.Modal(document.getElementById('transactionModal'));
+                modal.show();
+            }
+        } else {
+            showAlert('Transaksi tidak ditemukan!', 'warning');
+        }
+    } catch (error) {
+        console.error('Error loading transaction detail:', error);
+        showAlert('Error loading transaction detail: ' + error.message, 'danger');
+    }
+}
+
+function printReceipt() {
+    const content = document.getElementById('transaction-detail').innerHTML;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Struk Pembayaran</title>
+                <style>
+                    @page {
+                        size: 58mm auto; /* Ukuran kertas thermal 58mm */
+                        margin: 2mm;
+                    }
+                    body { 
+                        font-family: 'Courier New', monospace;
+                        margin: 0;
+                        padding: 2mm;
+                        font-size: 8pt;
+                        line-height: 1.1;
+                        color: #000;
+                        background: #fff;
+                    }
+                    .receipt-container {
+                        width: 100%;
+                        max-width: none;
+                        margin: 0;
+                    }
+                    .text-center { text-align: center; }
+                    .text-end { text-align: right; }
+                    @media print {
+                        body { -webkit-print-color-adjust: exact; }
+                        .receipt-container { page-break-inside: avoid; }
+                    }
+                </style>
+            </head>
+            <body onload="window.print(); window.close();">
+                ${content}
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+
+// Utility Functions
+function formatNumber(number) {
+    return new Intl.NumberFormat('id-ID').format(number);
+}
+
+function showAlert(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 80px; right: 20px; z-index: 9999; min-width: 300px; max-width: 400px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    document.body.appendChild(alertDiv);
+
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+        }
+    }, 5000);
+}
+
+// Export to Excel function
+function exportToExcel() {
+    // Create CSV content
+    let csvContent = "No,Tanggal,Total\n";
+    
+    // Get transaction data
+    apiRequest('api/transactions.php')
+        .then(transactions => {
+            transactions.forEach((transaction, index) => {
+                const date = new Date(transaction.transaction_date).toLocaleDateString('id-ID');
+                csvContent += `${index + 1},"${date}","Rp ${formatNumber(transaction.total)}"\n`;
+            });
+            
+            // Create and download file
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `riwayat_transaksi_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showAlert('Data berhasil diekspor ke Excel!', 'success');
+        })
+        .catch(error => {
+            console.error('Error exporting data:', error);
+            showAlert('Error mengekspor data: ' + error.message, 'danger');
+        });
+}
+
+// Inventory Management Functions
+function showAddStockModal() {
+    // Populate product dropdown
+    const productSelect = document.getElementById('stock-product');
+    if (productSelect) {
+        productSelect.innerHTML = '<option value="">-- Pilih Produk --</option>';
+        products.forEach(product => {
+            const option = document.createElement('option');
+            option.value = product.id;
+            option.textContent = `${product.name} (Stok: ${product.stock})`;
+            productSelect.appendChild(option);
+        });
+    }
+    
+    // Reset form
+    const stockForm = document.getElementById('stockForm');
+    if (stockForm) stockForm.reset();
+    
+    const modal = new bootstrap.Modal(document.getElementById('stockModal'));
+    modal.show();
+}
+
+async function addStock() {
+    const productId = document.getElementById('stock-product').value;
+    const quantity = parseInt(document.getElementById('stock-quantity').value);
+    const notes = document.getElementById('stock-notes').value.trim();
+    
+    if (!productId || !quantity || quantity <= 0) {
+        showAlert('Semua field harus diisi dengan benar!', 'warning');
+        return;
+    }
+    
+    try {
+        const result = await apiRequest('api/inventory.php', {
+            method: 'POST',
+            body: JSON.stringify({
+                product_id: parseInt(productId),
+                quantity: quantity,
+                notes: notes
+            })
+        });
+        
+        if (result.success) {
+            showAlert('Stok berhasil ditambahkan!', 'success');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('stockModal'));
+            if (modal) modal.hide();
+            
+            // Reload products and inventory data
+            loadProducts();
+            if (!document.getElementById('inventory').classList.contains('d-none')) {
+                loadInventoryData();
+            }
+        } else {
+            showAlert('Error: ' + (result.error || 'Unknown error'), 'danger');
+        }
+    } catch (error) {
+        console.error('Error adding stock:', error);
+        showAlert('Error menambah stok: ' + error.message, 'danger');
+    }
+}
+
+async function loadInventoryData() {
+    try {
+        const inventoryData = await apiRequest('api/inventory.php');
+        displayInventoryData(inventoryData);
+    } catch (error) {
+        console.error('Error loading inventory data:', error);
+        showAlert('Error loading inventory data: ' + error.message, 'danger');
+    }
+}
+
+function displayInventoryData(inventoryData) {
+    const tbody = document.getElementById('inventory-tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    if (!Array.isArray(inventoryData) || inventoryData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">Tidak ada data barang masuk</td></tr>';
+        return;
+    }
+    
+    inventoryData.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${new Date(item.created_at).toLocaleDateString('id-ID')}</td>
+            <td>${item.product_name}</td>
+            <td>${item.quantity}</td>
+            <td>${item.stock_before}</td>
+            <td>${item.stock_after}</td>
+            <td>${item.notes || '-'}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Dark/Light Mode Toggle Functions
+function toggleTheme() {
+    const currentTheme = localStorage.getItem('theme') || 'dark';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    localStorage.setItem('theme', newTheme);
+    applyTheme(newTheme);
+    
+    // Update button icons
+    const themeIcon = document.getElementById('theme-icon');
+    const themeIconDesktop = document.getElementById('theme-icon-desktop');
+    const iconClass = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+    
+    if (themeIcon) {
+        themeIcon.className = iconClass;
+    }
+    if (themeIconDesktop) {
+        themeIconDesktop.className = iconClass;
+    }
+}
+
+function applyTheme(theme) {
+    const root = document.documentElement;
+    
+    if (theme === 'light') {
+        root.style.setProperty('--bg-primary', '#f8f9fa');
+        root.style.setProperty('--bg-secondary', '#ffffff');
+        root.style.setProperty('--bg-tertiary', '#e9ecef');
+        root.style.setProperty('--text-primary', '#212529');
+        root.style.setProperty('--text-secondary', '#6c757d');
+        root.style.setProperty('--border-color', '#dee2e6');
+        root.style.setProperty('--shadow', '0 2px 10px rgba(0, 0, 0, 0.1)');
+        
+        // Update table classes
+        document.querySelectorAll('.table-dark').forEach(table => {
+            table.classList.remove('table-dark');
+            table.classList.add('table-light');
+        });
+        
+        // Update form controls
+        document.querySelectorAll('.form-control').forEach(input => {
+            input.style.backgroundColor = '#ffffff';
+            input.style.color = '#212529';
+            input.style.borderColor = '#ced4da';
+        });
+        
+        document.body.style.background = 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)';
+    } else {
+        root.style.setProperty('--bg-primary', '#0f1419');
+        root.style.setProperty('--bg-secondary', '#1a202c');
+        root.style.setProperty('--bg-tertiary', '#2d3748');
+        root.style.setProperty('--text-primary', '#e2e8f0');
+        root.style.setProperty('--text-secondary', '#a0aec0');
+        root.style.setProperty('--border-color', '#374151');
+        root.style.setProperty('--shadow', '0 10px 25px rgba(0, 0, 0, 0.3)');
+        
+        // Update table classes
+        document.querySelectorAll('.table-light').forEach(table => {
+            table.classList.remove('table-light');
+            table.classList.add('table-dark');
+        });
+        
+        // Reset form controls
+        document.querySelectorAll('.form-control').forEach(input => {
+            input.style.backgroundColor = '';
+            input.style.color = '';
+            input.style.borderColor = '';
+        });
+        
+        document.body.style.background = 'linear-gradient(135deg, #0f1419 0%, #1a202c 100%)';
+    }
+}
+
+// Initialize theme on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    applyTheme(savedTheme);
+    
+    const iconClass = savedTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+    const themeIcon = document.getElementById('theme-icon');
+    const themeIconDesktop = document.getElementById('theme-icon-desktop');
+    
+    if (themeIcon) {
+        themeIcon.className = iconClass;
+    }
+    if (themeIconDesktop) {
+        themeIconDesktop.className = iconClass;
+    }
+});
+
+// Make functions available globally (required for onclick handlers)
+window.showPage = showPage;
+window.showAddProductModal = showAddProductModal;
+window.editProduct = editProduct;
+window.saveProduct = saveProduct;
+window.deleteProduct = deleteProduct;
+window.selectProduct = selectProduct;
+window.addToCart = addToCart;
+window.removeFromCart = removeFromCart;
+window.changeCartQuantity = changeCartQuantity;
+window.updateCartQuantity = updateCartQuantity;
+window.processTransaction = processTransaction;
+window.clearCart = clearCart;
+window.viewTransactionDetail = viewTransactionDetail;
+window.printReceipt = printReceipt;
+window.searchProducts = searchProducts;
+window.calculateChange = calculateChange;
+window.handleSearchKeyPress = handleSearchKeyPress;
+window.quickAddToCart = quickAddToCart;
+window.exportToExcel = exportToExcel;
+window.showAddStockModal = showAddStockModal;
+window.addStock = addStock;
+window.toggleTheme = toggleTheme;

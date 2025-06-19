@@ -98,7 +98,7 @@ try {
                 'receipt_header' => trim($data['receipt_header'] ?? ''),
                 'currency' => trim($data['currency'] ?? 'Rp'),
                 'logo_url' => trim($data['logo_url'] ?? ''),
-                'tax_enabled' => (bool)($data['tax_enabled'] ?? false),
+                'tax_enabled' => isset($data['tax_enabled']) ? (int)(bool)$data['tax_enabled'] : 0,
                 'tax_rate' => floatval($data['tax_rate'] ?? 0)
             ];
             
@@ -114,7 +114,7 @@ try {
                          app_name = ?, store_name = ?, store_address = ?, store_phone = ?,
                          store_email = ?, store_website = ?, store_social_media = ?,
                          receipt_footer = ?, currency = ?, logo_url = ?, receipt_header = ?,
-                         tax_enabled = ?, tax_rate = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
+                         tax_enabled = ?, tax_rate = ?, updated_at = datetime('now') WHERE id = ?";
                 $stmt = $db->prepare($query);
                 $result = $stmt->execute([
                     $cleanData['app_name'], $cleanData['store_name'], $cleanData['store_address'], $cleanData['store_phone'],
@@ -126,8 +126,8 @@ try {
                 // Insert new settings
                 $query = "INSERT INTO app_settings 
                          (app_name, store_name, store_address, store_phone, store_email, store_website,
-                          store_social_media, receipt_footer, currency, logo_url, receipt_header, tax_enabled, tax_rate)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                          store_social_media, receipt_footer, currency, logo_url, receipt_header, tax_enabled, tax_rate, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))";
                 $stmt = $db->prepare($query);
                 $result = $stmt->execute([
                     $cleanData['app_name'], $cleanData['store_name'], $cleanData['store_address'], $cleanData['store_phone'],

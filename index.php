@@ -1114,7 +1114,7 @@ $user = $auth->getUser();
                     <div id="transaction-detail"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" id="print-receipt-btn" onclick="printCurrentReceipt()">
+                    <button type="button" class="btn btn-primary" onclick="printTransactionFromModal()">
                         <i class="fas fa-print"></i> Cetak Struk
                     </button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>

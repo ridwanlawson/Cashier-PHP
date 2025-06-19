@@ -1,3 +1,6 @@
+The code has been modified to fix tax calculation in receipt generation and showReceipt function by checking if tax_enabled is true or 1.
+```
+```replit_final_file
 // Global variables
 let products = [];
 let cart = [];
@@ -816,7 +819,7 @@ async function processTransaction() {
 
 function showReceipt(transactionId, cartItems, total, payment) {
     const change = payment - total;
-    
+
     // Store current receipt data for printing
     window.currentReceiptData = {
         id: transactionId,
@@ -857,7 +860,7 @@ function showReceipt(transactionId, cartItems, total, payment) {
     });
 
     const subtotal = cartItems.reduce((sum, item) => sum + item.subtotal, 0);
-    const taxEnabled = appSettings.tax_enabled || false;
+    const taxEnabled = appSettings.tax_enabled === true || appSettings.tax_enabled === 1;
     const taxRate = parseFloat(appSettings.tax_rate) || 0;
     const taxAmount = taxEnabled && taxRate > 0 ? subtotal * (taxRate / 100) : 0;
 
@@ -1140,7 +1143,7 @@ function generateReceiptHTML(cartItems, transactionData = null) {
     });
 
     const subtotal = cartItems.reduce((sum, item) => sum + item.subtotal, 0);
-    const taxEnabled = appSettings.tax_enabled || false;
+    const taxEnabled = appSettings.tax_enabled === true || appSettings.tax_enabled === 1;
     const taxRate = parseFloat(appSettings.tax_rate) || 0;
     const taxAmount = taxEnabled && taxRate > 0 ? subtotal * (taxRate / 100) : 0;
 
@@ -1493,7 +1496,7 @@ async function deleteUser(id) {
 function printCurrentReceipt() {
     if (window.currentReceiptData) {
         const receiptHTML = generateReceiptHTML(window.currentReceiptData.items, window.currentReceiptData);
-        
+
         // Create print window
         const printWindow = window.open('', '_blank');
         printWindow.document.write(`

@@ -57,8 +57,33 @@ try {
             $data = json_decode($input, true);
             
             if (!$data) {
-                throw new Exception('Invalid JSON data');
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => 'Invalid JSON data']);
+                exit;
             }
+            
+            // Validate required fields
+            if (empty($data['app_name']) || empty($data['store_name']) || empty($data['receipt_footer'])) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => 'Required fields are missing']);
+                exit;
+            }
+            
+            // Sanitize data
+            $cleanData = [
+                'app_name' => trim($data['app_name']),
+                'store_name' => trim($data['store_name']),
+                'store_address' => trim($data['store_address'] ?? ''),
+                'store_phone' => trim($data['store_phone'] ?? ''),
+                'store_email' => trim($data['store_email'] ?? ''),
+                'store_website' => trim($data['store_website'] ?? ''),
+                'store_social_media' => trim($data['store_social_media'] ?? ''),
+                'receipt_footer' => trim($data['receipt_footer']),
+                'receipt_header' => trim($data['receipt_header'] ?? ''),
+                'currency' => trim($data['currency'] ?? 'Rp'),
+                'logo_url' => trim($data['logo_url'] ?? ''),
+                'tax_rate' => floatval($data['tax_rate'] ?? 0)
+            ];
             
             // Check if settings exist
             $query = "SELECT id FROM app_settings LIMIT 1";
@@ -75,10 +100,10 @@ try {
                          tax_rate = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
                 $stmt = $db->prepare($query);
                 $result = $stmt->execute([
-                    $data['app_name'], $data['store_name'], $data['store_address'], $data['store_phone'],
-                    $data['store_email'], $data['store_website'], $data['store_social_media'],
-                    $data['receipt_footer'], $data['currency'], $data['logo_url'], $data['receipt_header'],
-                    $data['tax_rate'], $exists['id']
+                    $cleanData['app_name'], $cleanData['store_name'], $cleanData['store_address'], $cleanData['store_phone'],
+                    $cleanData['store_email'], $cleanData['store_website'], $cleanData['store_social_media'],
+                    $cleanData['receipt_footer'], $cleanData['currency'], $cleanData['logo_url'], $cleanData['receipt_header'],
+                    $cleanData['tax_rate'], $exists['id']
                 ]);
             } else {
                 // Insert new settings
@@ -88,17 +113,19 @@ try {
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $stmt = $db->prepare($query);
                 $result = $stmt->execute([
-                    $data['app_name'], $data['store_name'], $data['store_address'], $data['store_phone'],
-                    $data['store_email'], $data['store_website'], $data['store_social_media'],
-                    $data['receipt_footer'], $data['currency'], $data['logo_url'], $data['receipt_header'],
-                    $data['tax_rate']
+                    $cleanData['app_name'], $cleanData['store_name'], $cleanData['store_address'], $cleanData['store_phone'],
+                    $cleanData['store_email'], $cleanData['store_website'], $cleanData['store_social_media'],
+                    $cleanData['receipt_footer'], $cleanData['currency'], $cleanData['logo_url'], $cleanData['receipt_header'],
+                    $cleanData['tax_rate']
                 ]);
             }
             
             if ($result) {
                 echo json_encode(['success' => true, 'message' => 'Settings saved successfully']);
             } else {
-                echo json_encode(['success' => false, 'error' => 'Failed to save settings']);
+                $errorInfo = $stmt->errorInfo();
+                http_response_code(500);
+                echo json_encode(['success' => false, 'error' => 'Database error: ' . $errorInfo[2]]);
             }
             break;
             

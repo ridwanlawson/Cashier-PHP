@@ -1654,39 +1654,69 @@ async function loadSettings() {
 
 async function saveSettings() {
     try {
+        // Validate required fields
+        const appName = document.getElementById('app-name');
+        const storeName = document.getElementById('store-name');
+        const receiptFooter = document.getElementById('receipt-footer');
+        
+        if (!appName || !appName.value.trim()) {
+            showAlert('Nama aplikasi harus diisi!', 'warning');
+            return;
+        }
+        
+        if (!storeName || !storeName.value.trim()) {
+            showAlert('Nama toko harus diisi!', 'warning');
+            return;
+        }
+        
+        if (!receiptFooter || !receiptFooter.value.trim()) {
+            showAlert('Footer struk harus diisi!', 'warning');
+            return;
+        }
+
         const formData = {
-            app_name: document.getElementById('app-name').value,
-            store_name: document.getElementById('store-name').value,
-            store_address: document.getElementById('store-address').value,
-            store_phone: document.getElementById('store-phone').value,
-            store_email: document.getElementById('store-email').value,
-            store_website: document.getElementById('store-website').value,
-            store_social_media: document.getElementById('store-social-media').value,
-            receipt_footer: document.getElementById('receipt-footer').value,
-            receipt_header: document.getElementById('receipt-header').value,
-            currency: document.getElementById('currency').value,
-            logo_url: document.getElementById('logo-url').value,
-            tax_rate: parseFloat(document.getElementById('tax-rate').value) || 0
+            app_name: appName.value.trim(),
+            store_name: storeName.value.trim(),
+            store_address: document.getElementById('store-address')?.value.trim() || '',
+            store_phone: document.getElementById('store-phone')?.value.trim() || '',
+            store_email: document.getElementById('store-email')?.value.trim() || '',
+            store_website: document.getElementById('store-website')?.value.trim() || '',
+            store_social_media: document.getElementById('store-social-media')?.value.trim() || '',
+            receipt_footer: receiptFooter.value.trim(),
+            receipt_header: document.getElementById('receipt-header')?.value.trim() || '',
+            currency: document.getElementById('currency')?.value.trim() || 'Rp',
+            logo_url: document.getElementById('logo-url')?.value.trim() || '',
+            tax_rate: parseFloat(document.getElementById('tax-rate')?.value) || 0
         };
 
         console.log('Saving settings...', formData);
+        
+        // Show loading state
+        showAlert('Menyimpan pengaturan...', 'info');
+        
         const response = await apiRequest('api/settings.php', {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify(formData)
         });
 
-        if (response.success) {
-            appSettings = formData;
+        console.log('Settings response:', response);
+
+        if (response && response.success) {
+            appSettings = { ...formData };
             showAlert('Pengaturan berhasil disimpan!', 'success');
 
             // Update app title dynamically
             updateAppTitle();
         } else {
-            throw new Error(response.error || 'Failed to save settings');
+            const errorMsg = response?.error || response?.message || 'Failed to save settings';
+            throw new Error(errorMsg);
         }
     } catch (error) {
         console.error('Error saving settings:', error);
-        showAlert('Error saving settings: ' + error.message, 'danger');
+        showAlert('Error menyimpan pengaturan: ' + error.message, 'danger');
     }
 }
 

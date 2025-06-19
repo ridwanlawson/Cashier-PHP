@@ -1123,9 +1123,14 @@ function showReceipt(transactionId, cartItems, total, payment) {
     const change = payment - total;
     const now = new Date();
     
+    // Ensure appSettings is available
+    const settings = appSettings || {};
+    const appName = settings.app_name || 'Kasir Digital';
+    const storeName = settings.store_name || 'Toko ABC';
+    
     const subtotal = cartItems.reduce((sum, item) => sum + item.subtotal, 0);
-    const taxEnabled = appSettings.tax_enabled || false;
-    const taxRate = parseFloat(appSettings.tax_rate) || 0;
+    const taxEnabled = settings.tax_enabled || false;
+    const taxRate = parseFloat(settings.tax_rate) || 0;
     const taxAmount = taxEnabled && taxRate > 0 ? subtotal * (taxRate / 100) : 0;
 
     let receiptHTML = `
@@ -1287,15 +1292,22 @@ async function viewTransactionDetail(id) {
 
 function printReceipt() {
     const content = document.getElementById('transaction-detail').innerHTML;
-    const storeName = appSettings.store_name || 'Kasir Digital';
-    const storeAddress = appSettings.store_address || 'Alamat Tidak Tersedia';
-    const storePhone = appSettings.store_phone || 'Telepon Tidak Tersedia';
-    const storeEmail = appSettings.store_email || '';
-    const storeWebsite = appSettings.store_website || '';
-    const storeSocialMedia = appSettings.store_social_media || '';
-    const receiptFooter = appSettings.receipt_footer || 'Terima kasih atas kunjungan Anda!';
-    const receiptHeader = appSettings.receipt_header || '';
-    const currency = appSettings.currency || 'Rp';
+    
+    // Ensure appSettings is loaded, if not use defaults
+    const settings = appSettings || {};
+    const appName = settings.app_name || 'Kasir Digital';
+    const storeName = settings.store_name || 'Toko ABC';
+    const storeAddress = settings.store_address || 'Jl. Contoh No. 123, Kota, Provinsi';
+    const storePhone = settings.store_phone || '021-12345678';
+    const storeEmail = settings.store_email || '';
+    const storeWebsite = settings.store_website || '';
+    const storeSocialMedia = settings.store_social_media || '';
+    const receiptFooter = settings.receipt_footer || 'Terima kasih atas kunjungan Anda!';
+    const receiptHeader = settings.receipt_header || '';
+    const currency = settings.currency || 'Rp';
+    
+    // Create display title for receipt
+    const receiptTitle = storeName && storeName !== 'Toko ABC' ? `${appName} - ${storeName}` : appName;
 
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
@@ -1413,9 +1425,9 @@ function printReceipt() {
             <body>
                 <div class="receipt-container">
                     <div class="receipt-header">
-                        <div class="store-name">${storeName.toUpperCase()}</div>
+                        <div class="store-name">${receiptTitle.toUpperCase()}</div>
                         <div class="store-info">${storeAddress}</div>
-                        ${storePhone ? `<div class="store-info">Telp: ${storePhone}</div>` : ''}
+                        ${storePhone && storePhone !== '021-12345678' ? `<div class="store-info">Telp: ${storePhone}</div>` : ''}
                         ${storeEmail ? `<div class="store-info">Email: ${storeEmail}</div>` : ''}
                         ${storeWebsite ? `<div class="store-info">${storeWebsite}</div>` : ''}
                         ${storeSocialMedia ? `<div class="store-info">${storeSocialMedia}</div>` : ''}
@@ -1703,27 +1715,54 @@ async function loadSettings() {
         const settings = await apiRequest('api/settings.php');
         appSettings = settings;
 
-        // Update form fields
-        document.getElementById('app-name').value = settings.app_name || 'Kasir Digital';
-        document.getElementById('store-name').value = settings.store_name || '';
-        document.getElementById('store-address').value = settings.store_address || '';
-        document.getElementById('store-phone').value = settings.store_phone || '';
-        document.getElementById('store-email').value = settings.store_email || '';
-        document.getElementById('store-website').value = settings.store_website || '';
-        document.getElementById('store-social-media').value = settings.store_social_media || '';
-        document.getElementById('receipt-footer').value = settings.receipt_footer || '';
-        document.getElementById('receipt-header').value = settings.receipt_header || '';
-        document.getElementById('currency').value = settings.currency || 'Rp';
-        document.getElementById('logo-url').value = settings.logo_url || '';
-        document.getElementById('tax-enabled').checked = settings.tax_enabled || false;
-        document.getElementById('tax-rate').value = settings.tax_rate || 0;
+        // Update form fields if they exist (only for admin users)
+        const appNameField = document.getElementById('app-name');
+        if (appNameField) {
+            appNameField.value = settings.app_name || 'Kasir Digital';
+            document.getElementById('store-name').value = settings.store_name || '';
+            document.getElementById('store-address').value = settings.store_address || '';
+            document.getElementById('store-phone').value = settings.store_phone || '';
+            document.getElementById('store-email').value = settings.store_email || '';
+            document.getElementById('store-website').value = settings.store_website || '';
+            document.getElementById('store-social-media').value = settings.store_social_media || '';
+            document.getElementById('receipt-footer').value = settings.receipt_footer || '';
+            document.getElementById('receipt-header').value = settings.receipt_header || '';
+            document.getElementById('currency').value = settings.currency || 'Rp';
+            document.getElementById('logo-url').value = settings.logo_url || '';
+            document.getElementById('tax-enabled').checked = settings.tax_enabled || false;
+            document.getElementById('tax-rate').value = settings.tax_rate || 0;
+        }
+
+        // Always update app title regardless of user role
+        updateAppTitle();
 
         console.log('Settings loaded successfully');
     } catch (error) {
         console.error('Error loading settings:', error);
-        showAlert('Error loading settings: ' + error.message, 'danger');
+        // For non-admin users, silently use default settings
+        if (error.message.includes('403') || error.message.includes('Access denied')) {
+            console.log('Using default settings for non-admin user');
+            appSettings = {
+                app_name: 'Kasir Digital',
+                store_name: 'Toko ABC',
+                store_address: 'Jl. Contoh No. 123, Kota, Provinsi',
+                store_phone: '021-12345678',
+                store_email: '',
+                store_website: '',
+                store_social_media: '',
+                receipt_footer: 'Terima kasih atas kunjungan Anda!',
+                receipt_header: '',
+                currency: 'Rp',
+                logo_url: '',
+                tax_enabled: false,
+                tax_rate: 0
+            };
+            updateAppTitle();
+        } else {
+            showAlert('Error loading settings: ' + error.message, 'danger');
+        }
     }
-}
+}</async>
 
 async function saveSettings() {
     try {
@@ -1822,9 +1861,12 @@ async function saveSettings() {
 
 function updateAppTitle() {
     // Update page title and headers
-    const appName = appSettings.app_name || 'Kasir Digital';
-    const storeName = appSettings.store_name || '';
-    const displayTitle = storeName ? `${appName} - ${storeName}` : appName;
+    const settings = appSettings || {};
+    const appName = settings.app_name || 'Kasir Digital';
+    const storeName = settings.store_name || '';
+    
+    // Only show store name if it's not the default
+    const displayTitle = (storeName && storeName !== 'Toko ABC') ? `${appName} - ${storeName}` : appName;
     
     document.title = displayTitle;
 
@@ -1937,6 +1979,63 @@ function applyTheme(theme) {
     }
 }
 
+// Function to load basic settings for all users
+async function loadBasicSettings() {
+    try {
+        console.log('Loading basic app settings...');
+        const response = await fetch('api/settings.php');
+        
+        if (response.status === 403) {
+            // User doesn't have permission, use defaults
+            console.log('Using default settings for non-admin user');
+            appSettings = {
+                app_name: 'Kasir Digital',
+                store_name: 'Toko ABC',
+                store_address: 'Jl. Contoh No. 123, Kota, Provinsi',
+                store_phone: '021-12345678',
+                store_email: '',
+                store_website: '',
+                store_social_media: '',
+                receipt_footer: 'Terima kasih atas kunjungan Anda!',
+                receipt_header: '',
+                currency: 'Rp',
+                logo_url: '',
+                tax_enabled: false,
+                tax_rate: 0
+            };
+        } else if (response.ok) {
+            const settings = await response.json();
+            appSettings = settings;
+            console.log('Basic settings loaded successfully');
+        } else {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        // Update app title for all users
+        updateAppTitle();
+        
+    } catch (error) {
+        console.error('Error loading basic settings:', error);
+        // Use defaults if everything fails
+        appSettings = {
+            app_name: 'Kasir Digital',
+            store_name: 'Toko ABC',
+            store_address: 'Jl. Contoh No. 123, Kota, Provinsi',
+            store_phone: '021-12345678',
+            store_email: '',
+            store_website: '',
+            store_social_media: '',
+            receipt_footer: 'Terima kasih atas kunjungan Anda!',
+            receipt_header: '',
+            currency: 'Rp',
+            logo_url: '',
+            tax_enabled: false,
+            tax_rate: 0
+        };
+        updateAppTitle();
+    }
+}
+
 // Initialize theme on page load
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Page loaded, initializing...');
@@ -1945,12 +2044,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const savedTheme = localStorage.getItem('theme') || 'dark';
     applyTheme(savedTheme);
 
-    // Load app settings first
-    loadSettings().then(() => {
+    // Load basic settings first for all users
+    loadBasicSettings().then(() => {
         // Load dashboard data
         loadDashboardStats();
     }).catch(error => {
-        console.error('Failed to load settings:', error);
+        console.error('Failed to load basic settings:', error);
         // Load dashboard anyway
         loadDashboardStats();
     });

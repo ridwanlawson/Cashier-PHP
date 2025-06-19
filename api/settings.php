@@ -8,9 +8,12 @@ header('Content-Type: application/json');
 $auth = new Auth();
 $auth->requireLogin();
 
-// Only admin can manage settings
 $user = $auth->getUser();
-if ($user['role'] !== 'admin') {
+$method = $_SERVER['REQUEST_METHOD'];
+
+// For GET requests, allow all authenticated users to view settings
+// For POST requests, only admin can modify settings
+if ($method !== 'GET' && $user['role'] !== 'admin') {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Access denied']);
     exit;

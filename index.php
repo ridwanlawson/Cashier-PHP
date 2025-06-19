@@ -387,8 +387,64 @@ $user = $auth->getUser();
         }
 
         .modal-content {
-            background: #ffffff;
-            border: 1px solid #dee2e6;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .modal-header {
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .modal-footer {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .modal-title {
+            color: var(--text-primary);
+        }
+
+        .btn-close {
+            filter: var(--bs-btn-close-white-filter, invert(1) grayscale(100%) brightness(200%));
+        }
+
+        /* Light mode modal adjustments */
+        .light-mode .modal-content {
+            background: #ffffff !important;
+            border: 1px solid #dee2e6 !important;
+            color: #212529 !important;
+        }
+
+        .light-mode .modal-header {
+            background: #f8f9fa !important;
+            border-bottom: 1px solid #dee2e6 !important;
+            color: #212529 !important;
+        }
+
+        .light-mode .modal-body {
+            background: #ffffff !important;
+            color: #212529 !important;
+        }
+
+        .light-mode .modal-footer {
+            background: #ffffff !important;
+            border-top: 1px solid #dee2e6 !important;
+        }
+
+        .light-mode .modal-title {
+            color: #212529 !important;
+        }
+
+        .light-mode .btn-close {
+            filter: none;
         }
 
         .light-mode .card {

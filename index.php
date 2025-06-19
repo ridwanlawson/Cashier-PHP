@@ -741,11 +741,14 @@ $user = $auth->getUser();
                                 <table class="table table-dark table-striped" id="inventory-table">
                                     <thead>
                                         <tr>
-                                            <th>Tanggal</th>
-                                            <th>Produk</th>
-                                            <th>Jumlah Masuk</th>
-                                            <th>Stok Sebelum</th>
-                                            <th>Stok Sesudah</th>
+                                            <th>Tanggal <i class="fas fa-sort" onclick="sortTable('inventory', 'created_at')"></i></th>
+                                            <th>Produk <i class="fas fa-sort" onclick="sortTable('inventory', 'product_name')"></i></th>
+                                            <th>Qty</th>
+                                            <th>Harga Beli</th>
+                                            <th>Harga Jual</th>
+                                            <th>Profit</th>
+                                            <th>Stok Before</th>
+                                            <th>Stok After</th>
                                             <th>Keterangan</th>
                                         </tr>
                                     </thead>
@@ -841,6 +844,25 @@ $user = $auth->getUser();
                         <div class="mb-3">
                             <label for="stock-quantity" class="form-label">Jumlah Masuk</label>
                             <input type="number" class="form-control" id="stock-quantity" required min="1">
+                        </div>
+                        <div class="mb-3">
+                            <label for="purchase-price" class="form-label">Harga Perolehan</label>
+                            <input type="number" class="form-control" id="purchase-price" required min="0" step="0.01">
+                        </div>
+                        <div class="mb-3">
+                            <label for="margin-type" class="form-label">Tipe Margin</label>
+                            <select class="form-control" id="margin-type" onchange="updateMarginLabel()">
+                                <option value="percentage">Persentase (%)</option>
+                                <option value="fixed">Nominal (Rp)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="margin-value" class="form-label" id="margin-label">Margin (%)</label>
+                            <input type="number" class="form-control" id="margin-value" min="0" step="0.01" value="0">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Harga Jual (Otomatis)</label>
+                            <input type="text" class="form-control" id="selling-price-display" readonly>
                         </div>
                         <div class="mb-3">
                             <label for="stock-notes" class="form-label">Keterangan</label>

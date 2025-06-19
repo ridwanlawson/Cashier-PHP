@@ -54,6 +54,10 @@ class Database {
                 quantity INTEGER NOT NULL,
                 stock_before INTEGER NOT NULL,
                 stock_after INTEGER NOT NULL,
+                purchase_price REAL DEFAULT 0,
+                selling_price REAL DEFAULT 0,
+                margin_type TEXT DEFAULT 'percentage',
+                margin_value REAL DEFAULT 0,
                 notes TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (product_id) REFERENCES products(id)

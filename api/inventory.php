@@ -21,7 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 try {
-    $db = Database::getInstance()->getConnection();
+    $database = new Database();
+    $db = $database->getConnection();
     $method = $_SERVER['REQUEST_METHOD'];
     
     // Create inventory_log table if it doesn't exist
@@ -73,16 +74,33 @@ try {
             }
             
             // Validate required fields
-            if (!isset($data['product_id']) || !isset($data['quantity'])) {
-                throw new Exception('Product ID and quantity are required');
+            if (!isset($data['product_id']) || !isset($data['quantity']) || !isset($data['purchase_price'])) {
+                throw new Exception('Product ID, quantity, and purchase price are required');
             }
             
             $productId = (int)$data['product_id'];
             $quantity = (int)$data['quantity'];
+            $purchasePrice = (float)$data['purchase_price'];
+            $marginType = isset($data['margin_type']) ? $data['margin_type'] : 'percentage'; // percentage or fixed
+            $marginValue = isset($data['margin_value']) ? (float)$data['margin_value'] : 0;
             $notes = isset($data['notes']) ? trim($data['notes']) : '';
             
             if ($quantity <= 0) {
                 throw new Exception('Quantity must be greater than 0');
+            }
+            
+            if ($purchasePrice <= 0) {
+                throw new Exception('Purchase price must be greater than 0');
+            }
+            
+            // Calculate selling price based on margin
+            $sellingPrice = $purchasePrice;
+            if ($marginValue > 0) {
+                if ($marginType === 'percentage') {
+                    $sellingPrice = $purchasePrice + ($purchasePrice * $marginValue / 100);
+                } else {
+                    $sellingPrice = $purchasePrice + $marginValue;
+                }
             }
             
             // Begin transaction
@@ -101,13 +119,13 @@ try {
                 $stockBefore = (int)$product['stock'];
                 $stockAfter = $stockBefore + $quantity;
                 
-                // Update product stock
-                $stmt = $db->prepare("UPDATE products SET stock = ? WHERE id = ?");
-                $stmt->execute([$stockAfter, $productId]);
+                // Update product stock and price
+                $stmt = $db->prepare("UPDATE products SET stock = ?, price = ? WHERE id = ?");
+                $stmt->execute([$stockAfter, $sellingPrice, $productId]);
                 
-                // Insert inventory log
-                $stmt = $db->prepare("INSERT INTO inventory_log (product_id, quantity, stock_before, stock_after, notes) VALUES (?, ?, ?, ?, ?)");
-                $stmt->execute([$productId, $quantity, $stockBefore, $stockAfter, $notes]);
+                // Insert inventory log with purchase and selling price
+                $stmt = $db->prepare("INSERT INTO inventory_log (product_id, quantity, stock_before, stock_after, purchase_price, selling_price, margin_type, margin_value, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$productId, $quantity, $stockBefore, $stockAfter, $purchasePrice, $sellingPrice, $marginType, $marginValue, $notes]);
                 
                 $db->commit();
                 

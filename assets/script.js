@@ -1,4 +1,3 @@
-
 // Global variables
 let products = [];
 let cart = [];
@@ -13,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add event listeners
     const searchProduct = document.getElementById('search-product');
     const paymentAmount = document.getElementById('payment-amount');
-    
+
     if (searchProduct) {
         searchProduct.addEventListener('input', debounce(searchProducts, 300));
         searchProduct.addEventListener('keypress', handleSearchKeyPress);
@@ -39,7 +38,7 @@ function debounce(func, wait) {
 // Page Navigation
 function showPage(pageId, element) {
     console.log('Showing page:', pageId);
-    
+
     // Hide all pages
     document.querySelectorAll('.page-content').forEach(page => {
         page.classList.add('d-none');
@@ -86,22 +85,22 @@ async function apiRequest(url, options = {}) {
             'Content-Type': 'application/json'
         }
     };
-    
+
     const finalOptions = { ...defaultOptions, ...options };
-    
+
     try {
         const response = await fetch(url, finalOptions);
-        
+
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
+
         const text = await response.text();
-        
+
         if (!text.trim()) {
             throw new Error('Empty response from server');
         }
-        
+
         try {
             return JSON.parse(text);
         } catch (jsonError) {
@@ -120,7 +119,7 @@ async function loadDashboardStats() {
     try {
         console.log('Loading dashboard stats...');
         const stats = await apiRequest('api/transactions.php?stats=1');
-        
+
         if (stats.success === false) {
             throw new Error(stats.error || 'Unknown error from server');
         }
@@ -134,7 +133,7 @@ async function loadDashboardStats() {
         if (todayTransactions) todayTransactions.textContent = stats.today_transactions || 0;
         if (todayRevenue) todayRevenue.textContent = 'Rp ' + formatNumber(stats.today_revenue || 0);
         if (lowStock) lowStock.textContent = stats.low_stock || 0;
-        
+
         console.log('Dashboard stats loaded successfully');
     } catch (error) {
         console.error('Error loading stats:', error);
@@ -147,7 +146,7 @@ async function loadProducts() {
     try {
         console.log('Loading products...');
         const result = await apiRequest('api/products.php');
-        
+
         if (Array.isArray(result)) {
             products = result;
             displayProducts();
@@ -328,7 +327,7 @@ async function searchProducts() {
 function displayProductSuggestions(searchResults) {
     const container = document.getElementById('product-suggestions');
     if (!container) return;
-    
+
     container.innerHTML = '';
 
     if (!Array.isArray(searchResults) || searchResults.length === 0) {
@@ -399,16 +398,16 @@ function addToCartDirectly() {
     }
 
     displayCart();
-    
+
     const searchInput = document.getElementById('search-product');
     const qtyInputField = document.getElementById('product-qty');
     const suggestions = document.getElementById('product-suggestions');
-    
+
     if (searchInput) searchInput.value = '';
     if (qtyInputField) qtyInputField.value = '1';
     if (suggestions) suggestions.innerHTML = '';
     selectedProduct = null;
-    
+
     showAlert('Produk ditambahkan ke keranjang!', 'success');
 }
 
@@ -431,7 +430,7 @@ async function quickAddToCart() {
     try {
         // Search for exact barcode match first
         let product = await apiRequest(`api/products.php?barcode=${encodeURIComponent(searchTerm)}`);
-        
+
         // If no exact barcode match, search by name
         if (!product) {
             const searchResults = await apiRequest(`api/products.php?search=${encodeURIComponent(searchTerm)}`);
@@ -443,7 +442,7 @@ async function quickAddToCart() {
         if (product && product.id) {
             selectedProduct = product;
             addToCartDirectly();
-            
+
             // Clear suggestions
             const suggestions = document.getElementById('product-suggestions');
             if (suggestions) suggestions.innerHTML = '';
@@ -459,7 +458,7 @@ async function quickAddToCart() {
 function displayCart() {
     const container = document.getElementById('cart-items');
     if (!container) return;
-    
+
     container.innerHTML = '';
 
     if (cart.length === 0) {
@@ -512,19 +511,19 @@ function removeFromCart(index) {
 function changeCartQuantity(index, change) {
     const item = cart[index];
     const newQuantity = item.quantity + change;
-    
+
     if (newQuantity <= 0) {
         removeFromCart(index);
         return;
     }
-    
+
     // Check stock availability
     const product = products.find(p => p.id === item.product_id);
     if (product && newQuantity > product.stock) {
         showAlert('Stok tidak mencukupi!', 'warning');
         return;
     }
-    
+
     item.quantity = newQuantity;
     item.subtotal = item.quantity * item.price;
     displayCart();
@@ -536,9 +535,9 @@ function updateCartQuantity(index, newQuantity) {
         removeFromCart(index);
         return;
     }
-    
+
     const item = cart[index];
-    
+
     // Check stock availability
     const product = products.find(p => p.id === item.product_id);
     if (product && qty > product.stock) {
@@ -547,7 +546,7 @@ function updateCartQuantity(index, newQuantity) {
         displayCart();
         return;
     }
-    
+
     item.quantity = qty;
     item.subtotal = item.quantity * item.price;
     displayCart();
@@ -604,7 +603,7 @@ async function processTransaction() {
 
     try {
         console.log('Processing transaction:', { total, items_count: cart.length });
-        
+
         const transactionData = {
             total: total,
             items: cart.map(item => ({
@@ -631,7 +630,7 @@ async function processTransaction() {
 
             // Reload products to update stock
             loadProducts();
-            
+
             // Reload inventory data if inventory page is currently visible
             if (!document.getElementById('inventory').classList.contains('d-none')) {
                 loadInventoryData();
@@ -653,68 +652,122 @@ function clearCart() {
     selectedProduct = null;
 }
 
-function showReceipt(transactionId, items, total, payment) {
-    const now = new Date();
-    const receiptContent = `
-        <div class="receipt-container" style="width: 58mm; max-width: 220px; margin: 0 auto; font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.2; color: #000;">
-            <div class="text-center" style="text-align: center;">
-                <div style="font-size: 14px; font-weight: bold; margin-bottom: 2px;">KASIR DIGITAL</div>
-                <div style="font-size: 9px; margin: 1px 0;">Jl. Replit Store No. 123</div>
-                <div style="font-size: 9px; margin: 1px 0;">Telp: 021-12345678</div>
-                <div style="border-top: 1px dashed #000; margin: 8px 0; width: 100%;"></div>
-                <div style="font-size: 11px; margin: 2px 0;">No: ${String(transactionId).padStart(6, '0')}</div>
-                <div style="font-size: 9px; margin: 1px 0;">${now.toLocaleDateString('id-ID', {day: '2-digit', month: '2-digit', year: 'numeric'})}</div>
-                <div style="font-size: 9px; margin: 1px 0;">${now.toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit', second: '2-digit'})}</div>
-                <div style="font-size: 9px; margin: 1px 0;">Kasir: Admin</div>
-                <div style="border-top: 1px dashed #000; margin: 8px 0; width: 100%;"></div>
+function printReceipt() {
+    const transactionDetail = document.getElementById('transaction-detail').innerHTML;
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Struk Transaksi</title>
+            <style>
+                body { 
+                    font-family: 'Courier New', monospace; 
+                    font-size: 12px; 
+                    margin: 0; 
+                    padding: 20px; 
+                    background: white;
+                    color: black;
+                }
+                .receipt { 
+                    max-width: 300px; 
+                    margin: 0 auto; 
+                    background: white;
+                    color: black;
+                }
+                .center { text-align: center; }
+                .line { border-bottom: 1px dashed #000; margin: 10px 0; }
+                table { width: 100%; border-collapse: collapse; }
+                td { padding: 2px 0; vertical-align: top; }
+                .right { text-align: right; }
+                .bold { font-weight: bold; }
+                .total-row { border-top: 1px solid #000; font-weight: bold; }
+                .store-info { margin-bottom: 15px; }
+                .thank-you { margin-top: 15px; font-size: 10px; }
+                @media print {
+                    body { margin: 0; padding: 10px; }
+                    .receipt { max-width: none; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="receipt">
+                <div class="store-info center">
+                    <div class="bold" style="font-size: 14px;">KASIR DIGITAL</div>
+                    <div>Jl. Contoh No. 123</div>
+                    <div>Telp: (021) 123-4567</div>
+                </div>
+                <div class="line"></div>
+                ${transactionDetail}
+                <div class="line"></div>
+                <div class="thank-you center">
+                    <div>Terima kasih atas kunjungan Anda!</div>
+                    <div>Selamat berbelanja kembali</div>
+                    <div style="margin-top: 10px;">Dicetak: ${new Date().toLocaleString('id-ID')}</div>
+                </div>
             </div>
-            <div style="font-size: 9px;">
-                ${items.map(item => {
-                    const itemName = item.name.length > 20 ? item.name.substring(0, 20) + '...' : item.name;
-                    const qtyPrice = `${item.quantity} x ${formatNumber(item.price)}`;
-                    const subtotal = formatNumber(item.subtotal);
-                    return `
-                        <div style="margin-bottom: 4px;">
-                            <div style="font-weight: bold; margin-bottom: 1px;">${itemName}</div>
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span style="font-size: 8px;">${qtyPrice}</span>
-                                <span style="font-weight: bold; font-size: 9px;">${subtotal}</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-                <div style="border-top: 1px dashed #000; margin: 8px 0; width: 100%;"></div>
-                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 11px; margin: 3px 0;">
-                    <span>TOTAL</span>
-                    <span>Rp ${formatNumber(total)}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin: 2px 0; font-size: 10px;">
-                    <span>TUNAI</span>
-                    <span>Rp ${formatNumber(payment)}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 10px;">
-                    <span>KEMBALI</span>
-                    <span>Rp ${formatNumber(payment - total)}</span>
-                </div>
-                <div style="border-top: 1px dashed #000; margin: 8px 0; width: 100%;"></div>
-                <div style="text-align: center; font-size: 8px;">
-                    <div style="margin: 2px 0;">Terima kasih atas kunjungan Anda</div>
-                    <div style="margin: 2px 0;">Barang yang sudah dibeli</div>
-                    <div style="margin: 2px 0;">tidak dapat ditukar</div>
-                    <div style="margin: 2px 0;">Simpan struk ini sebagai</div>
-                    <div style="margin: 2px 0;">bukti pembayaran yang sah</div>
-                    <div style="margin: 8px 0; font-size: 7px;">*** STRUK ASLI ***</div>
-                </div>
-            </div>
+            <script>
+                window.print();
+                window.onafterprint = function() { window.close(); }
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+
+// Function to show receipt after transaction
+function showReceipt(transactionId, cartItems, total, payment) {
+    const change = payment - total;
+    let receiptHTML = `
+        <div class="center">
+            <h6>STRUK TRANSAKSI #${transactionId}</h6>
+            <small>${new Date().toLocaleString('id-ID')}</small>
         </div>
+        <div class="line"></div>
+        <table>
     `;
 
-    const transactionDetail = document.getElementById('transaction-detail');
-    if (transactionDetail) {
-        transactionDetail.innerHTML = receiptContent;
-        const modal = new bootstrap.Modal(document.getElementById('transactionModal'));
-        modal.show();
-    }
+    cartItems.forEach(item => {
+        receiptHTML += `
+            <tr>
+                <td colspan="2">${item.name}</td>
+            </tr>
+            <tr>
+                <td>${item.quantity} x Rp ${formatNumber(item.price)}</td>
+                <td class="right">Rp ${formatNumber(item.subtotal)}</td>
+            </tr>
+        `;
+    });
+
+    receiptHTML += `
+        </table>
+        <div class="line"></div>
+        <table>
+            <tr class="total-row">
+                <td><strong>TOTAL:</strong></td>
+                <td class="right"><strong>Rp ${formatNumber(total)}</strong></td>
+            </tr>
+            <tr>
+                <td>Bayar:</td>
+                <td class="right">Rp ${formatNumber(payment)}</td>
+            </tr>
+            <tr>
+                <td>Kembalian:</td>
+                <td class="right">Rp ${formatNumber(change)}</td>
+            </tr>
+        </table>
+    `;
+
+    // Show receipt in modal first
+    document.getElementById('transaction-detail').innerHTML = receiptHTML;
+    const modal = new bootstrap.Modal(document.getElementById('transactionModal'));
+    modal.show();
+
+    // Auto print after 1 second
+    setTimeout(() => {
+        printReceipt();
+    }, 1000);
 }
 
 // Transactions Functions
@@ -722,7 +775,7 @@ async function loadTransactions() {
     try {
         console.log('Loading transactions...');
         const transactions = await apiRequest('api/transactions.php');
-        
+
         if (Array.isArray(transactions)) {
             displayTransactions(transactions);
             console.log('Transactions loaded successfully');
@@ -886,7 +939,7 @@ function showAlert(message, type = 'info') {
 function exportToExcel() {
     // Create CSV content
     let csvContent = "No,Tanggal,Total\n";
-    
+
     // Get transaction data
     apiRequest('api/transactions.php')
         .then(transactions => {
@@ -894,7 +947,7 @@ function exportToExcel() {
                 const date = new Date(transaction.transaction_date).toLocaleDateString('id-ID');
                 csvContent += `${index + 1},"${date}","Rp ${formatNumber(transaction.total)}"\n`;
             });
-            
+
             // Create and download file
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
@@ -905,7 +958,7 @@ function exportToExcel() {
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            
+
             showAlert('Data berhasil diekspor ke Excel!', 'success');
         })
         .catch(error => {
@@ -927,113 +980,106 @@ function showAddStockModal() {
             productSelect.appendChild(option);
         });
     }
-    
+
     // Reset form
     const stockForm = document.getElementById('stockForm');
     if (stockForm) stockForm.reset();
-    
+
     const modal = new bootstrap.Modal(document.getElementById('stockModal'));
     modal.show();
 }
 
+// Update margin label and calculate selling price
+function updateMarginLabel() {
+    const marginType = document.getElementById('margin-type').value;    const marginLabel = document.getElementById('margin-label');
+    marginLabel.textContent = marginType === 'percentage' ? 'Margin (%)' : 'Margin (Rp)';
+    calculateSellingPrice();
+}
+
+// Calculate selling price based on purchase price and margin
+function calculateSellingPrice() {
+    const purchasePrice = parseFloat(document.getElementById('purchase-price').value) || 0;
+    const marginType = document.getElementById('margin-type').value;
+    const marginValue = parseFloat(document.getElementById('margin-value').value) || 0;
+
+    let sellingPrice = purchasePrice;
+    if (marginValue > 0) {
+        if (marginType === 'percentage') {
+            sellingPrice = purchasePrice + (purchasePrice * marginValue / 100);
+        } else {
+            sellingPrice = purchasePrice + marginValue;
+        }
+    }
+
+    document.getElementById('selling-price-display').value = 'Rp ' + formatNumber(sellingPrice);
+}
+
 async function addStock() {
     const productId = document.getElementById('stock-product').value;
-    const quantity = parseInt(document.getElementById('stock-quantity').value);
-    const notes = document.getElementById('stock-notes').value.trim();
-    
-    if (!productId || !quantity || quantity <= 0) {
-        showAlert('Semua field harus diisi dengan benar!', 'warning');
+    const quantity = document.getElementById('stock-quantity').value;
+    const purchasePrice = document.getElementById('purchase-price').value;
+    const marginType = document.getElementById('margin-type').value;
+    const marginValue = document.getElementById('margin-value').value;
+    const notes = document.getElementById('stock-notes').value;
+
+    if (!productId || !quantity || quantity <= 0 || !purchasePrice || purchasePrice <= 0) {
+        showAlert('Harap isi semua field yang diperlukan dengan nilai yang valid!', 'warning');
         return;
     }
-    
+
     try {
+        console.log('Adding stock:', { productId, quantity, purchasePrice, marginType, marginValue, notes });
+
         const result = await apiRequest('api/inventory.php', {
             method: 'POST',
             body: JSON.stringify({
                 product_id: parseInt(productId),
-                quantity: quantity,
-                notes: notes
+                quantity: parseInt(quantity),
+                purchase_price: parseFloat(purchasePrice),
+                margin_type: marginType,
+                margin_value: parseFloat(marginValue) || 0,
+                notes: notes.trim()
             })
         });
-        
+
         if (result.success) {
             showAlert('Stok berhasil ditambahkan!', 'success');
+
+            // Close modal
             const modal = bootstrap.Modal.getInstance(document.getElementById('stockModal'));
-            if (modal) modal.hide();
-            
-            // Reload products and inventory data
+            modal.hide();
+
+            // Reset form
+            document.getElementById('stockForm').reset();
+            document.getElementById('selling-price-display').value = '';
+
+            // Reload inventory data
+            loadInventoryData();
+
+            // Reload products to show updated stock and price
             loadProducts();
-            if (!document.getElementById('inventory').classList.contains('d-none')) {
-                loadInventoryData();
-            }
         } else {
             showAlert('Error: ' + (result.error || 'Unknown error'), 'danger');
         }
     } catch (error) {
         console.error('Error adding stock:', error);
-        showAlert('Error menambah stok: ' + error.message, 'danger');
+        showAlert('Error adding stock: ' + error.message, 'danger');
     }
-}
-
-async function loadInventoryData() {
-    try {
-        console.log('Loading inventory data...');
-        const inventoryData = await apiRequest('api/inventory.php');
-        
-        if (Array.isArray(inventoryData)) {
-            displayInventoryData(inventoryData);
-            console.log('Inventory data loaded successfully');
-        } else if (inventoryData.success === false) {
-            throw new Error(inventoryData.error || 'Unknown error from server');
-        } else {
-            throw new Error('Unexpected response format');
-        }
-    } catch (error) {
-        console.error('Error loading inventory data:', error);
-        showAlert('Error loading inventory data: ' + error.message, 'danger');
-        // Show empty table instead of leaving it blank
-        displayInventoryData([]);
-    }
-}
-
-function displayInventoryData(inventoryData) {
-    const tbody = document.getElementById('inventory-tbody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
-    
-    if (!Array.isArray(inventoryData) || inventoryData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center">Tidak ada data barang masuk</td></tr>';
-        return;
-    }
-    
-    inventoryData.forEach(item => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${new Date(item.created_at).toLocaleDateString('id-ID')}</td>
-            <td>${item.product_name}</td>
-            <td>${item.quantity}</td>
-            <td>${item.stock_before}</td>
-            <td>${item.stock_after}</td>
-            <td>${item.notes || '-'}</td>
-        `;
-        tbody.appendChild(row);
-    });
 }
 
 // Dark/Light Mode Toggle Functions
 function toggleTheme() {
     const currentTheme = localStorage.getItem('theme') || 'dark';
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    
+
     localStorage.setItem('theme', newTheme);
     applyTheme(newTheme);
-    
+
     // Update button icons
     const themeIcon = document.getElementById('theme-icon');
     const themeIconDesktop = document.getElementById('theme-icon-desktop');
     const iconClass = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
-    
+
     if (themeIcon) {
         themeIcon.className = iconClass;
     }
@@ -1044,11 +1090,11 @@ function toggleTheme() {
 
 function applyTheme(theme) {
     const root = document.documentElement;
-    
+
     if (theme === 'light') {
         document.body.classList.add('light-mode');
         document.body.classList.remove('dark-mode');
-        
+
         root.style.setProperty('--bg-primary', '#f8f9fa');
         root.style.setProperty('--bg-secondary', '#ffffff');
         root.style.setProperty('--bg-tertiary', '#f8f9fa');
@@ -1056,34 +1102,34 @@ function applyTheme(theme) {
         root.style.setProperty('--text-secondary', '#6c757d');
         root.style.setProperty('--border-color', '#dee2e6');
         root.style.setProperty('--shadow', '0 2px 10px rgba(0, 0, 0, 0.1)');
-        
+
         // Update table classes
         document.querySelectorAll('.table-dark').forEach(table => {
             table.classList.remove('table-dark');
             table.classList.add('table-light');
         });
-        
+
         // Force update body background
         document.body.style.setProperty('background', 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)', 'important');
         document.body.style.setProperty('color', '#212529', 'important');
-        
+
         // Update sidebar and main content
         const sidebar = document.querySelector('.sidebar');
         const mainContent = document.querySelector('.main-content');
-        
+
         if (sidebar) {
             sidebar.style.setProperty('background', 'linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%)', 'important');
             sidebar.style.setProperty('border-right', '2px solid #dee2e6', 'important');
         }
-        
+
         if (mainContent) {
             mainContent.style.setProperty('background', '#f8f9fa', 'important');
         }
-        
+
     } else {
         document.body.classList.add('dark-mode');
         document.body.classList.remove('light-mode');
-        
+
         root.style.setProperty('--bg-primary', '#0f1419');
         root.style.setProperty('--bg-secondary', '#1a202c');
         root.style.setProperty('--bg-tertiary', '#2d3748');
@@ -1091,26 +1137,26 @@ function applyTheme(theme) {
         root.style.setProperty('--text-secondary', '#a0aec0');
         root.style.setProperty('--border-color', '#374151');
         root.style.setProperty('--shadow', '0 10px 25px rgba(0, 0, 0, 0.3)');
-        
+
         // Update table classes
         document.querySelectorAll('.table-light').forEach(table => {
             table.classList.remove('table-light');
             table.classList.add('table-dark');
         });
-        
+
         // Force update body background
         document.body.style.setProperty('background', 'linear-gradient(135deg, #0f1419 0%, #1a202c 100%)', 'important');
         document.body.style.setProperty('color', '#e2e8f0', 'important');
-        
+
         // Reset sidebar and main content styles
         const sidebar = document.querySelector('.sidebar');
         const mainContent = document.querySelector('.main-content');
-        
+
         if (sidebar) {
             sidebar.style.removeProperty('background');
             sidebar.style.removeProperty('border-right');
         }
-        
+
         if (mainContent) {
             mainContent.style.removeProperty('background');
         }
@@ -1121,11 +1167,11 @@ function applyTheme(theme) {
 document.addEventListener('DOMContentLoaded', function() {
     const savedTheme = localStorage.getItem('theme') || 'dark';
     applyTheme(savedTheme);
-    
+
     const iconClass = savedTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
     const themeIcon = document.getElementById('theme-icon');
     const themeIconDesktop = document.getElementById('theme-icon-desktop');
-    
+
     if (themeIcon) {
         themeIcon.className = iconClass;
     }

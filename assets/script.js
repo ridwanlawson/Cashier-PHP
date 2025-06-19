@@ -1129,7 +1129,7 @@ function showReceipt(transactionId, cartItems, total, payment) {
     const taxAmount = taxEnabled && taxRate > 0 ? subtotal * (taxRate / 100) : 0;
 
     let receiptHTML = `
-        <div class="transaction-info">
+        <div class="transaction-info" style="margin-bottom: 15px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                 <span>No. Transaksi:</span>
                 <span><strong>#${transactionId}</strong></span>
@@ -1144,27 +1144,30 @@ function showReceipt(transactionId, cartItems, total, payment) {
             </div>
         </div>
 
-        <div class="items-section">
-            <div style="font-weight: bold; margin-bottom: 10px; text-align: center;">DAFTAR BELANJA</div>
+        <div class="items-section" style="margin-bottom: 15px;">
+            <div style="font-weight: bold; margin-bottom: 10px; text-align: center; border-bottom: 1px dashed #666; padding-bottom: 5px;">DAFTAR BELANJA</div>
+            <table style="width: 100%; border-collapse: collapse;">
     `;
 
     cartItems.forEach(item => {
         receiptHTML += `
-            <div class="item-line">
-                <div class="item-name">${item.name}</div>
-            </div>
-            <div class="item-qty-price">
-                ${item.quantity} x Rp ${formatNumber(item.price)}
-                <span class="item-total" style="float: right;">Rp ${formatNumber(item.subtotal)}</span>
-            </div>
+            <tr>
+                <td colspan="3" style="padding: 3px 0; font-weight: bold; border-bottom: 1px solid #333;">${item.name}</td>
+            </tr>
+            <tr style="font-size: 0.9em;">
+                <td style="padding: 2px 0; width: 15%; text-align: center;">${item.quantity}</td>
+                <td style="padding: 2px 0; width: 45%; text-align: center;">× Rp ${formatNumber(item.price)}</td>
+                <td style="padding: 2px 0; width: 40%; text-align: right; font-weight: bold;">Rp ${formatNumber(item.subtotal)}</td>
+            </tr>
         `;
     });
 
     receiptHTML += `
+            </table>
         </div>
 
-        <div class="totals-section">
-            <div class="total-line">
+        <div class="totals-section" style="border-top: 1px dashed #666; padding-top: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                 <span>Subtotal:</span>
                 <span>Rp ${formatNumber(subtotal)}</span>
             </div>
@@ -1172,7 +1175,7 @@ function showReceipt(transactionId, cartItems, total, payment) {
     
     if (taxEnabled && taxAmount > 0) {
         receiptHTML += `
-            <div class="total-line">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                 <span>Pajak (${taxRate}%):</span>
                 <span>Rp ${formatNumber(taxAmount)}</span>
             </div>
@@ -1180,16 +1183,16 @@ function showReceipt(transactionId, cartItems, total, payment) {
     }
     
     receiptHTML += `
-            <div class="total-line grand-total">
-                <span><strong>TOTAL BELANJA:</strong></span>
-                <span><strong>Rp ${formatNumber(total)}</strong></span>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-weight: bold; font-size: 1.1em; border-top: 1px solid #666; border-bottom: 1px solid #666; padding: 8px 0;">
+                <span>TOTAL BELANJA:</span>
+                <span>Rp ${formatNumber(total)}</span>
             </div>
             <div class="payment-info">
-                <div class="total-line">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                     <span>Tunai:</span>
                     <span>Rp ${formatNumber(payment)}</span>
                 </div>
-                <div class="total-line">
+                <div style="display: flex; justify-content: space-between; font-weight: bold;">
                     <span>Kembalian:</span>
                     <span>Rp ${formatNumber(change)}</span>
                 </div>
@@ -1731,16 +1734,19 @@ async function saveSettings() {
         
         if (!appName || !appName.value.trim()) {
             showAlert('Nama aplikasi harus diisi!', 'warning');
+            appName?.focus();
             return;
         }
         
         if (!storeName || !storeName.value.trim()) {
             showAlert('Nama toko harus diisi!', 'warning');
+            storeName?.focus();
             return;
         }
         
         if (!receiptFooter || !receiptFooter.value.trim()) {
             showAlert('Footer struk harus diisi!', 'warning');
+            receiptFooter?.focus();
             return;
         }
 
@@ -1765,24 +1771,47 @@ async function saveSettings() {
         // Show loading state
         showAlert('Menyimpan pengaturan...', 'info');
         
-        const response = await apiRequest('api/settings.php', {
+        const response = await fetch('api/settings.php', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             body: JSON.stringify(formData)
         });
 
-        console.log('Settings response:', response);
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
 
-        if (response && response.success) {
+        const responseText = await response.text();
+        console.log('Raw response:', responseText);
+        
+        let result;
+        try {
+            result = JSON.parse(responseText);
+        } catch (jsonError) {
+            console.error('JSON parse error:', jsonError);
+            throw new Error('Server response is not valid JSON: ' + responseText);
+        }
+
+        console.log('Parsed result:', result);
+
+        if (result && result.success) {
             appSettings = { ...formData };
             showAlert('Pengaturan berhasil disimpan!', 'success');
 
             // Update app title dynamically
             updateAppTitle();
+            
+            // Reload settings to ensure UI is updated
+            setTimeout(() => {
+                loadSettings();
+            }, 1000);
         } else {
-            const errorMsg = response?.error || response?.message || 'Failed to save settings';
+            const errorMsg = result?.error || result?.message || 'Failed to save settings';
             throw new Error(errorMsg);
         }
     } catch (error) {
@@ -1795,7 +1824,7 @@ function updateAppTitle() {
     // Update page title and headers
     const appName = appSettings.app_name || 'Kasir Digital';
     const storeName = appSettings.store_name || '';
-    const displayTitle = storeName ? `${storeName} - ${appName}` : appName;
+    const displayTitle = storeName ? `${appName} - ${storeName}` : appName;
     
     document.title = displayTitle;
 

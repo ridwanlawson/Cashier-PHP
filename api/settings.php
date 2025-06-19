@@ -54,18 +54,31 @@ try {
             
         case 'POST':
             $input = file_get_contents("php://input");
+            
+            if (empty($input)) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => 'No input data received']);
+                exit;
+            }
+            
             $data = json_decode($input, true);
+            
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => 'Invalid JSON data: ' . json_last_error_msg()]);
+                exit;
+            }
             
             if (!$data) {
                 http_response_code(400);
-                echo json_encode(['success' => false, 'error' => 'Invalid JSON data']);
+                echo json_encode(['success' => false, 'error' => 'Empty JSON data']);
                 exit;
             }
             
             // Validate required fields
             if (empty($data['app_name']) || empty($data['store_name']) || empty($data['receipt_footer'])) {
                 http_response_code(400);
-                echo json_encode(['success' => false, 'error' => 'Required fields are missing']);
+                echo json_encode(['success' => false, 'error' => 'Required fields are missing: app_name, store_name, receipt_footer']);
                 exit;
             }
             

@@ -1,7 +1,4 @@
-
 <?php
-session_start();
-
 class Auth {
     private $users = [
         'admin' => [

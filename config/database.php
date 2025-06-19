@@ -68,7 +68,7 @@ class Database {
             )",
             "INSERT OR IGNORE INTO users (username, password, name, role) VALUES 
              ('admin', 'password', 'Administrator', 'admin'),
-             ('kasir', 'password', 'Kasir', 'kasir')",
+            ('kasir', 'password', 'Kasir', 'kasir')",
             "CREATE TABLE IF NOT EXISTS app_settings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 app_name TEXT DEFAULT 'Kasir Digital',
@@ -83,6 +83,7 @@ class Database {
                 currency TEXT DEFAULT 'Rp',
                 logo_url TEXT DEFAULT '',
                 tax_rate REAL DEFAULT 0,
+                tax_enabled INTEGER DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )"

@@ -159,19 +159,19 @@ try {
     echo "💰 Installing sample transactions...\n";
     $currentDate = date('Y-m-d H:i:s');
     $transactions = [
-        [45000, $currentDate],
-        [78000, date('Y-m-d H:i:s', strtotime('-1 hour'))],
-        [32000, date('Y-m-d H:i:s', strtotime('-2 hours'))],
-        [125000, date('Y-m-d H:i:s', strtotime('-1 day'))],
-        [67000, date('Y-m-d H:i:s', strtotime('-1 day -2 hours'))]
+        [40909, 4091, 45000, $currentDate], // subtotal, tax (10%), total, date
+        [70909, 7091, 78000, date('Y-m-d H:i:s', strtotime('-1 hour'))],
+        [29091, 2909, 32000, date('Y-m-d H:i:s', strtotime('-2 hours'))],
+        [113636, 11364, 125000, date('Y-m-d H:i:s', strtotime('-1 day'))],
+        [60909, 6091, 67000, date('Y-m-d H:i:s', strtotime('-1 day -2 hours'))]
     ];
 
-    $transactionStmt = $db->prepare("INSERT INTO transactions (total, transaction_date) VALUES (?, ?)");
+    $transactionStmt = $db->prepare("INSERT INTO transactions (subtotal, tax_amount, total, transaction_date) VALUES (?, ?, ?, ?)");
     $transactionCount = 0;
     foreach ($transactions as $transaction) {
         if ($transactionStmt->execute($transaction)) {
             $transactionCount++;
-            echo "  → Transaksi Rp " . number_format($transaction[0], 0, ',', '.') . " - {$transaction[1]}\n";
+            echo "  → Transaksi Rp " . number_format($transaction[2], 0, ',', '.') . " (Subtotal: Rp " . number_format($transaction[0], 0, ',', '.') . " + Pajak: Rp " . number_format($transaction[1], 0, ',', '.') . ") - {$transaction[3]}\n";
         }
     }
     echo "✓ Installed {$transactionCount} transactions\n\n";
@@ -196,6 +196,33 @@ try {
     }
     echo "✓ Installed {$inventoryCount} inventory logs\n\n";
 
+    // Sample app settings
+    echo "⚙️ Installing sample app settings...\n";
+    $sampleSettings = [
+        'Kasir Digital Pro',
+        'Toko Serba Ada Sejahtera',
+        'Jl. Merdeka No. 123, Jakarta Pusat, DKI Jakarta 10110',
+        '(021) 123-4567',
+        'info@tokoserbaada.com',
+        'www.tokoserbaada.com',
+        '@tokoserbaada',
+        'Selamat datang di Toko Serba Ada Sejahtera\nMelayani dengan sepenuh hati',
+        'Terima kasih atas kepercayaan Anda berbelanja di toko kami\nBarang yang sudah dibeli tidak dapat dikembalikan\nSimpan struk ini sebagai bukti pembelian',
+        'Rp',
+        '',
+        false,
+        10.0
+    ];
+
+    $settingsStmt = $db->prepare("INSERT OR IGNORE INTO app_settings (app_name, store_name, store_address, store_phone, store_email, store_website, store_social_media, receipt_header, receipt_footer, currency, logo_url, tax_enabled, tax_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    if ($settingsStmt->execute($sampleSettings)) {
+        echo "  → Pengaturan aplikasi berhasil diinstall\n";
+        echo "    • Nama Aplikasi: {$sampleSettings[0]}\n";
+        echo "    • Nama Toko: {$sampleSettings[1]}\n";
+        echo "    • Pajak: " . ($sampleSettings[11] ? "Aktif ({$sampleSettings[12]}%)" : "Tidak Aktif") . "\n";
+    }
+    echo "✓ Sample settings installed\n\n";
+
     // Commit transaction
     $db->commit();
 
@@ -212,7 +239,8 @@ try {
     echo "   • Users installed: {$userCount}\n";
     echo "   • Products installed: {$productCount}\n";
     echo "   • Sample transactions: {$transactionCount}\n";
-    echo "   • Inventory logs: {$inventoryCount}\n\n";
+    echo "   • Inventory logs: {$inventoryCount}\n";
+    echo "   • App settings: configured\n\n";
     echo "💡 TIPS:\n";
     echo "   • Test barcode scanning with: FOOD001, DRINK001, SNACK001\n";
     echo "   • Use 'Nasi Gudeg' for quick product search test\n";

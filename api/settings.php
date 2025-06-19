@@ -44,6 +44,7 @@ try {
                     'currency' => 'Rp',
                     'logo_url' => '',
                     'receipt_header' => '',
+                    'tax_enabled' => false,
                     'tax_rate' => 0
                 ];
             }
@@ -81,6 +82,7 @@ try {
                 'receipt_header' => trim($data['receipt_header'] ?? ''),
                 'currency' => trim($data['currency'] ?? 'Rp'),
                 'logo_url' => trim($data['logo_url'] ?? ''),
+                'tax_enabled' => (bool)($data['tax_enabled'] ?? false),
                 'tax_rate' => floatval($data['tax_rate'] ?? 0)
             ];
             
@@ -96,26 +98,26 @@ try {
                          app_name = ?, store_name = ?, store_address = ?, store_phone = ?,
                          store_email = ?, store_website = ?, store_social_media = ?,
                          receipt_footer = ?, currency = ?, logo_url = ?, receipt_header = ?,
-                         tax_rate = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
+                         tax_enabled = ?, tax_rate = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
                 $stmt = $db->prepare($query);
                 $result = $stmt->execute([
                     $cleanData['app_name'], $cleanData['store_name'], $cleanData['store_address'], $cleanData['store_phone'],
                     $cleanData['store_email'], $cleanData['store_website'], $cleanData['store_social_media'],
                     $cleanData['receipt_footer'], $cleanData['currency'], $cleanData['logo_url'], $cleanData['receipt_header'],
-                    $cleanData['tax_rate'], $exists['id']
+                    $cleanData['tax_enabled'], $cleanData['tax_rate'], $exists['id']
                 ]);
             } else {
                 // Insert new settings
                 $query = "INSERT INTO app_settings 
                          (app_name, store_name, store_address, store_phone, store_email, store_website,
-                          store_social_media, receipt_footer, currency, logo_url, receipt_header, tax_rate)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                          store_social_media, receipt_footer, currency, logo_url, receipt_header, tax_enabled, tax_rate)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $stmt = $db->prepare($query);
                 $result = $stmt->execute([
                     $cleanData['app_name'], $cleanData['store_name'], $cleanData['store_address'], $cleanData['store_phone'],
                     $cleanData['store_email'], $cleanData['store_website'], $cleanData['store_social_media'],
                     $cleanData['receipt_footer'], $cleanData['currency'], $cleanData['logo_url'], $cleanData['receipt_header'],
-                    $cleanData['tax_rate']
+                    $cleanData['tax_enabled'], $cleanData['tax_rate']
                 ]);
             }
             

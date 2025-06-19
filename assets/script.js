@@ -915,8 +915,28 @@ function updateCartQuantity(index, newQuantity) {
 }
 
 function updateCartTotal() {
-    const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
+    const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
+    const taxEnabled = appSettings.tax_enabled || false;
+    const taxRate = parseFloat(appSettings.tax_rate) || 0;
+    
+    let taxAmount = 0;
+    if (taxEnabled && taxRate > 0) {
+        taxAmount = subtotal * (taxRate / 100);
+    }
+    
+    const total = subtotal + taxAmount;
+    
+    const cartSubtotal = document.getElementById('cart-subtotal');
+    const cartTax = document.getElementById('cart-tax');
     const cartTotal = document.getElementById('cart-total');
+    
+    if (cartSubtotal) {
+        cartSubtotal.textContent = `Rp ${formatNumber(subtotal)}`;
+    }
+    if (cartTax) {
+        cartTax.textContent = `Rp ${formatNumber(taxAmount)}`;
+        cartTax.parentNode.style.display = taxEnabled ? 'flex' : 'none';
+    }
     if (cartTotal) {
         cartTotal.textContent = `Rp ${formatNumber(total)}`;
     }
@@ -924,7 +944,16 @@ function updateCartTotal() {
 }
 
 function calculateChange() {
-    const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
+    const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
+    const taxEnabled = appSettings.tax_enabled || false;
+    const taxRate = parseFloat(appSettings.tax_rate) || 0;
+    
+    let taxAmount = 0;
+    if (taxEnabled && taxRate > 0) {
+        taxAmount = subtotal * (taxRate / 100);
+    }
+    
+    const total = subtotal + taxAmount;
     const paymentInput = document.getElementById('payment-amount');
     const changeElement = document.getElementById('change-amount');
 
@@ -941,7 +970,16 @@ async function processTransaction() {
         return;
     }
 
-    const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
+    const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
+    const taxEnabled = appSettings.tax_enabled || false;
+    const taxRate = parseFloat(appSettings.tax_rate) || 0;
+    
+    let taxAmount = 0;
+    if (taxEnabled && taxRate > 0) {
+        taxAmount = subtotal * (taxRate / 100);
+    }
+    
+    const total = subtotal + taxAmount;
     const paymentInput = document.getElementById('payment-amount');
     const payment = parseFloat(paymentInput ? paymentInput.value : 0) || 0;
 
@@ -967,6 +1005,8 @@ async function processTransaction() {
         console.log('Processing transaction:', { total, items_count: cart.length });
 
         const transactionData = {
+            subtotal: subtotal,
+            tax_amount: taxAmount,
             total: total,
             items: cart.map(item => ({
                 product_id: item.product_id,
@@ -1082,6 +1122,11 @@ function printReceipt() {
 function showReceipt(transactionId, cartItems, total, payment) {
     const change = payment - total;
     const now = new Date();
+    
+    const subtotal = cartItems.reduce((sum, item) => sum + item.subtotal, 0);
+    const taxEnabled = appSettings.tax_enabled || false;
+    const taxRate = parseFloat(appSettings.tax_rate) || 0;
+    const taxAmount = taxEnabled && taxRate > 0 ? subtotal * (taxRate / 100) : 0;
 
     let receiptHTML = `
         <div class="transaction-info">
@@ -1119,6 +1164,22 @@ function showReceipt(transactionId, cartItems, total, payment) {
         </div>
 
         <div class="totals-section">
+            <div class="total-line">
+                <span>Subtotal:</span>
+                <span>Rp ${formatNumber(subtotal)}</span>
+            </div>
+    `;
+    
+    if (taxEnabled && taxAmount > 0) {
+        receiptHTML += `
+            <div class="total-line">
+                <span>Pajak (${taxRate}%):</span>
+                <span>Rp ${formatNumber(taxAmount)}</span>
+            </div>
+        `;
+    }
+    
+    receiptHTML += `
             <div class="total-line grand-total">
                 <span><strong>TOTAL BELANJA:</strong></span>
                 <span><strong>Rp ${formatNumber(total)}</strong></span>
@@ -1223,7 +1284,7 @@ async function viewTransactionDetail(id) {
 
 function printReceipt() {
     const content = document.getElementById('transaction-detail').innerHTML;
-	const storeName = appSettings.store_name || 'Kasir Digital';
+    const storeName = appSettings.store_name || 'Kasir Digital';
     const storeAddress = appSettings.store_address || 'Alamat Tidak Tersedia';
     const storePhone = appSettings.store_phone || 'Telepon Tidak Tersedia';
     const storeEmail = appSettings.store_email || '';
@@ -1233,12 +1294,11 @@ function printReceipt() {
     const receiptHeader = appSettings.receipt_header || '';
     const currency = appSettings.currency || 'Rp';
 
-
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
         <html>
             <head>
-                <title>Struk Pembayaran</title>
+                <title>Struk Pembayaran - ${storeName}</title>
                 <style>
                     @page {
                         size: 80mm auto;
@@ -1271,6 +1331,11 @@ function printReceipt() {
                     .store-info {
                         font-size: 9pt;
                         margin-bottom: 3px;
+                    }
+                    .custom-header {
+                        font-size: 10pt;
+                        margin-bottom: 10px;
+                        font-style: italic;
                     }
                     .transaction-info {
                         margin-bottom: 15px;
@@ -1345,16 +1410,20 @@ function printReceipt() {
             <body>
                 <div class="receipt-container">
                     <div class="receipt-header">
-                        <div class="store-name">KASIR DIGITAL</div>
-                        <div class="store-info">Jl. Digital Store No. 123</div>
-                        <div class="store-info">Telp: (021) 123-4567</div>
+                        <div class="store-name">${storeName.toUpperCase()}</div>
+                        <div class="store-info">${storeAddress}</div>
+                        ${storePhone ? `<div class="store-info">Telp: ${storePhone}</div>` : ''}
+                        ${storeEmail ? `<div class="store-info">Email: ${storeEmail}</div>` : ''}
+                        ${storeWebsite ? `<div class="store-info">${storeWebsite}</div>` : ''}
+                        ${storeSocialMedia ? `<div class="store-info">${storeSocialMedia}</div>` : ''}
+                        ${receiptHeader ? `<div class="custom-header">${receiptHeader}</div>` : ''}
                     </div>
                     ${content}
                     <div class="footer">
-                        <div class="thank-you">*** TERIMA KASIH ***</div>
+                        <div class="thank-you">*** ${receiptFooter.toUpperCase()} ***</div>
                         <div>Barang yang sudah dibeli</div>
                         <div>tidak dapat dikembalikan</div>
-                        <div style="margin-top: 10px;">www.kasirdigital.com</div>
+                        <div style="margin-top: 10px;">Dicetak: ${new Date().toLocaleString('id-ID')}</div>
                     </div>
                 </div>
                 <script>
@@ -1643,6 +1712,7 @@ async function loadSettings() {
         document.getElementById('receipt-header').value = settings.receipt_header || '';
         document.getElementById('currency').value = settings.currency || 'Rp';
         document.getElementById('logo-url').value = settings.logo_url || '';
+        document.getElementById('tax-enabled').checked = settings.tax_enabled || false;
         document.getElementById('tax-rate').value = settings.tax_rate || 0;
 
         console.log('Settings loaded successfully');
@@ -1686,6 +1756,7 @@ async function saveSettings() {
             receipt_header: document.getElementById('receipt-header')?.value.trim() || '',
             currency: document.getElementById('currency')?.value.trim() || 'Rp',
             logo_url: document.getElementById('logo-url')?.value.trim() || '',
+            tax_enabled: document.getElementById('tax-enabled')?.checked || false,
             tax_rate: parseFloat(document.getElementById('tax-rate')?.value) || 0
         };
 
@@ -1723,18 +1794,21 @@ async function saveSettings() {
 function updateAppTitle() {
     // Update page title and headers
     const appName = appSettings.app_name || 'Kasir Digital';
-    document.title = appName;
+    const storeName = appSettings.store_name || '';
+    const displayTitle = storeName ? `${storeName} - ${appName}` : appName;
+    
+    document.title = displayTitle;
 
     // Update sidebar title
     const sidebarTitles = document.querySelectorAll('.sidebar h4');
     sidebarTitles.forEach(title => {
-        title.innerHTML = `<i class="fas fa-cash-register"></i> ${appName}`;
+        title.innerHTML = `<i class="fas fa-cash-register"></i> ${displayTitle}`;
     });
 
     // Update mobile header
     const mobileTitle = document.querySelector('.mobile-header h5');
     if (mobileTitle) {
-        mobileTitle.innerHTML = `<i class="fas fa-cash-register"></i> ${appName}`;
+        mobileTitle.innerHTML = `<i class="fas fa-cash-register"></i> ${displayTitle}`;
     }
 }
 

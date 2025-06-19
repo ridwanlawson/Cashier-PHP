@@ -852,6 +852,14 @@ $user = $auth->getUser();
                                     <div id="cart-items"></div>
                                     <hr>
                                     <div class="d-flex justify-content-between">
+                                        <span>Subtotal: </span>
+                                        <span id="cart-subtotal">Rp 0</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between" id="tax-line" style="display: none;">
+                                        <span>Pajak: </span>
+                                        <span id="cart-tax">Rp 0</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
                                         <strong>Total: </strong>
                                         <strong id="cart-total" class="text-cyan">Rp 0</strong>
                                     </div>
@@ -986,8 +994,17 @@ $user = $auth->getUser();
                                             <input type="text" class="form-control" id="currency" value="Rp" required>
                                         </div>
                                         <div class="mb-3">
+                                            <div class="form-check form-switch mb-2">
+                                                <input class="form-check-input" type="checkbox" id="tax-enabled">
+                                                <label class="form-check-label" for="tax-enabled">
+                                                    Aktifkan Pajak
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
                                             <label for="tax-rate" class="form-label">Tarif Pajak (%)</label>
                                             <input type="number" class="form-control" id="tax-rate" min="0" max="100" step="0.01" value="0">
+                                            <small class="text-muted">Pajak akan diterapkan pada transaksi jika diaktifkan</small>
                                         </div>
                                     </div>
                                     <div class="col-md-6">

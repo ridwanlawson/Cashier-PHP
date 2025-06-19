@@ -900,7 +900,8 @@ function showReceipt(transactionId, cartItems, total, payment) {
             </div>
     `;
 
-    if (taxEnabled && taxAmount > 0) {
+    // Only show tax if enabled and has value
+    if (taxEnabled && taxRate > 0 && taxAmount > 0) {
         receiptHTML += `
             <div class="row">
                 <div class="col-6">Pajak (${taxRate}%):</div>
@@ -1199,7 +1200,8 @@ function generateReceiptHTML(cartItems, transactionData = null) {
             </div>
     `;
 
-    if (taxEnabled && taxAmount > 0) {
+    // Only show tax if enabled and has value
+    if (taxEnabled && taxRate > 0 && taxAmount > 0) {
         receiptHTML += `
             <div style="display: flex; justify-content: space-between;">
                 <span>Pajak (${taxRate}%):</span>

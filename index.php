@@ -825,17 +825,13 @@ $user = $auth->getUser();
                                 </div>
                                 <div class="card-body">
                                     <div class="row mb-3">
-                                        <div class="col-sm-6 mb-2">
+                                        <div class="col-sm-8 mb-2">
                                             <input type="text" class="form-control" id="search-product" 
-                                                   placeholder="Cari produk atau scan barcode...">
+                                                   placeholder="Ketik nama produk atau scan barcode (Enter untuk menambah)...">
                                         </div>
-                                        <div class="col-sm-2 col-4 mb-2">
-                                            <input type="number" class="form-control" id="product-qty" 
-                                                   placeholder="Qty" value="1" min="1">
-                                        </div>
-                                        <div class="col-sm-4 col-8 mb-2">
+                                        <div class="col-sm-4 mb-2">
                             <button class="btn btn-success w-100" onclick="addToCart()">
-                                <i class="fas fa-cart-plus"></i> <span class="d-none d-sm-inline">Tambah</span>
+                                <i class="fas fa-cart-plus"></i> Tambah Manual
                             </button>
                         </div>
                                     </div>

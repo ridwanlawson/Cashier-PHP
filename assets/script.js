@@ -490,6 +490,22 @@ async function deleteProduct(id) {
     }
 }
 
+// Search product by barcode and auto-add
+async function searchProductByBarcode(barcode) {
+    try {
+        const product = await apiRequest(`api/products.php?barcode=${encodeURIComponent(barcode)}`);
+        if (product) {
+            selectProduct(product);
+        } else {
+            showAlert('Produk dengan barcode tersebut tidak ditemukan!', 'warning');
+            document.getElementById('search-product').value = '';
+        }
+    } catch (error) {
+        console.error('Error searching product by barcode:', error);
+        showAlert('Error mencari produk!', 'danger');
+    }
+}
+
 // Cashier functions
 async function searchProducts() {
     const searchTerm = document.getElementById('search-product').value.trim();
@@ -538,39 +554,22 @@ function displayProductSuggestions(searchResults) {
 function selectProduct(product) {
     document.getElementById('search-product').value = product.name;
     document.getElementById('product-suggestions').innerHTML = '';
-    document.getElementById('product-qty').focus();
-
-    // Store selected product for adding to cart
-    window.selectedProduct = product;
-}
-
-function addToCart() {
-    const selectedProduct = window.selectedProduct;
-    const qtyInput = document.getElementById('product-qty');
-    const qty = parseInt(qtyInput.value) || 1;
-
-    if (!selectedProduct) {
-        showAlert('Pilih produk terlebih dahulu!', 'warning');
-        return;
-    }
-
-    if (qty <= 0) {
-        showAlert('Jumlah harus lebih dari 0!', 'warning');
-        return;
-    }
-
-    if (qty > selectedProduct.stock) {
+    
+    // Auto add to cart with quantity 1
+    const qty = 1;
+    
+    if (qty > product.stock) {
         showAlert('Stok tidak mencukupi!', 'warning');
         return;
     }
 
     // Check if product already in cart
-    const existingItemIndex = cart.findIndex(item => item.product_id === selectedProduct.id);
+    const existingItemIndex = cart.findIndex(item => item.product_id === product.id);
 
     if (existingItemIndex >= 0) {
         // Update quantity
         const newQty = cart[existingItemIndex].quantity + qty;
-        if (newQty > selectedProduct.stock) {
+        if (newQty > product.stock) {
             showAlert('Stok tidak mencukupi!', 'warning');
             return;
         }
@@ -579,22 +578,37 @@ function addToCart() {
     } else {
         // Add new item
         cart.push({
-            product_id: selectedProduct.id,
-            name: selectedProduct.name,
-            price: selectedProduct.price,
+            product_id: product.id,
+            name: product.name,
+            price: product.price,
             quantity: qty,
-            subtotal: selectedProduct.price * qty
+            subtotal: product.price * qty
         });
     }
 
     updateCart();
 
-    // Clear form
+    // Clear search
     document.getElementById('search-product').value = '';
-    qtyInput.value = '1';
-    window.selectedProduct = null;
+    document.getElementById('product-suggestions').innerHTML = '';
 
     showAlert('Produk ditambahkan ke keranjang!', 'success');
+}
+
+function addToCart() {
+    const searchTerm = document.getElementById('search-product').value.trim();
+    
+    if (!searchTerm) {
+        showAlert('Masukkan nama produk atau barcode!', 'warning');
+        return;
+    }
+
+    // If it looks like a barcode, search by barcode
+    if (/^\d+$/.test(searchTerm) && searchTerm.length >= 5) {
+        searchProductByBarcode(searchTerm);
+    } else {
+        showAlert('Pilih produk dari daftar pencarian terlebih dahulu!', 'warning');
+    }
 }
 
 function updateCart() {
@@ -627,9 +641,13 @@ function updateCart() {
                 </div>
                 <div class="text-end">
                     <div class="text-cyan"><strong>${appSettings.currency || 'Rp'} ${formatNumber(item.subtotal)}</strong></div>
-                    <button class="btn btn-danger btn-sm mt-1" onclick="removeFromCart(${index})">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    <div class="btn-group btn-group-sm mt-1">
+                        <button class="btn btn-secondary" onclick="decreaseQty(${index})">-</button>
+                        <button class="btn btn-info" onclick="increaseQty(${index})">+</button>
+                        <button class="btn btn-danger" onclick="removeFromCart(${index})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
@@ -659,6 +677,29 @@ function updateCart() {
 
     // Update change calculation
     calculateChange();
+}
+
+function increaseQty(index) {
+    const item = cart[index];
+    const product = products.find(p => p.id === item.product_id);
+    
+    if (product && item.quantity < product.stock) {
+        cart[index].quantity += 1;
+        cart[index].subtotal = cart[index].price * cart[index].quantity;
+        updateCart();
+    } else {
+        showAlert('Stok tidak mencukupi!', 'warning');
+    }
+}
+
+function decreaseQty(index) {
+    if (cart[index].quantity > 1) {
+        cart[index].quantity -= 1;
+        cart[index].subtotal = cart[index].price * cart[index].quantity;
+        updateCart();
+    } else {
+        removeFromCart(index);
+    }
 }
 
 function removeFromCart(index) {
@@ -778,9 +819,12 @@ function showReceipt(transactionId, cartItems, total, payment) {
 
     let receiptHTML = `
         <div class="text-center mb-3">
+            ${appSettings.receipt_header ? `<div><small>${appSettings.receipt_header}</small></div>` : ''}
             <h6>${appSettings.store_name || 'Toko ABC'}</h6>
-            <small>${appSettings.store_address || ''}</small><br>
-            <small>Tel: ${appSettings.store_phone || ''}</small>
+            ${appSettings.store_address ? `<small>${appSettings.store_address}</small><br>` : ''}
+            ${appSettings.store_phone ? `<small>Tel: ${appSettings.store_phone}</small><br>` : ''}
+            ${appSettings.store_email ? `<small>Email: ${appSettings.store_email}</small><br>` : ''}
+            ${appSettings.store_website ? `<small>Web: ${appSettings.store_website}</small><br>` : ''}
         </div>
         <div class="border-top border-bottom py-2 mb-2">
             <div class="row">
@@ -1302,6 +1346,14 @@ async function printTransactionReceipt(transactionId) {
         if (transaction && transaction.id) {
             let receiptHTML = `
                 <div class="center">
+                    ${appSettings.receipt_header ? `<div><small>${appSettings.receipt_header}</small></div>` : ''}
+                    <h4>${appSettings.store_name || 'Toko ABC'}</h4>
+                    ${appSettings.store_address ? `<div>${appSettings.store_address}</div>` : ''}
+                    ${appSettings.store_phone ? `<div>Tel: ${appSettings.store_phone}</div>` : ''}
+                    ${appSettings.store_email ? `<div>Email: ${appSettings.store_email}</div>` : ''}
+                </div>
+                <div class="line"></div>
+                <div class="center">
                     <h6>STRUK TRANSAKSI #${transaction.id}</h6>
                     <small>${new Date(transaction.transaction_date).toLocaleString('id-ID')}</small>
                 </div>
@@ -1399,7 +1451,15 @@ document.addEventListener('DOMContentLoaded', function() {
         searchProduct.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                addToCart();
+                // Check if it's a barcode (numeric and length > 5)
+                const searchTerm = this.value.trim();
+                if (/^\d+$/.test(searchTerm) && searchTerm.length >= 5) {
+                    // Search product by barcode and auto-add
+                    searchProductByBarcode(searchTerm);
+                } else {
+                    // Manual add to cart
+                    addToCart();
+                }
             }
         });
     }

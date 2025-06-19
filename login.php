@@ -1,3 +1,4 @@
+
 <?php
 session_start();
 require_once 'auth.php';
@@ -53,6 +54,12 @@ if ($auth->isLoggedIn()) {
         }
 
         body.light-mode {
+            --bg-primary: #f8f9fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f8f9fa;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --border-color: #dee2e6;
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
             color: #212529 !important;
         }
@@ -69,10 +76,10 @@ if ($auth->isLoggedIn()) {
         }
 
         body.light-mode .login-container {
-            background: #ffffff !important;
-            border: 1px solid #dee2e6 !important;
+            background: var(--bg-secondary) !important;
+            border: 1px solid var(--border-color) !important;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
-            color: #212529 !important;
+            color: var(--text-primary) !important;
         }
         
         .login-header {
@@ -81,8 +88,12 @@ if ($auth->isLoggedIn()) {
         }
         
         .login-header h2 {
-            color: #00d4ff;
+            color: var(--accent-primary);
             margin-bottom: 0.5rem;
+        }
+
+        .login-header .text-muted {
+            color: var(--text-secondary) !important;
         }
         
         .form-control {
@@ -91,6 +102,7 @@ if ($auth->isLoggedIn()) {
             color: var(--text-primary);
             margin-bottom: 1rem;
             transition: all 0.3s ease;
+            height: 45px;
         }
         
         .form-control:focus {
@@ -100,25 +112,49 @@ if ($auth->isLoggedIn()) {
             color: var(--text-primary);
         }
 
-        body.light-mode .form-control {
-            background: #ffffff !important;
-            border: 1px solid #ced4da !important;
-            color: #495057 !important;
+        .form-control::placeholder {
+            color: var(--text-secondary);
         }
 
-        body.light-mode .form-control:focus {
-            background: #ffffff !important;
-            border-color: var(--accent-primary) !important;
-            color: #495057 !important;
+        .form-label {
+            color: var(--text-primary);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
         }
 
-        body.light-mode .login-header h2 {
-            color: var(--accent-primary) !important;
+        .input-group {
+            margin-bottom: 1rem;
         }
 
-        body.light-mode .user-info {
-            background: #f8f9fa !important;
-            color: #495057 !important;
+        .input-group .form-control {
+            margin-bottom: 0;
+        }
+
+        .password-toggle-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-left: 0;
+            color: var(--text-primary);
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .password-toggle-btn:hover {
+            background: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+        }
+
+        .password-toggle-btn:focus {
+            background: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 0.2rem rgba(0, 212, 255, 0.25);
         }
 
         .theme-toggle {
@@ -142,38 +178,18 @@ if ($auth->isLoggedIn()) {
         .theme-toggle:hover {
             transform: scale(1.1);
         }
-
-        body.light-mode .theme-toggle {
-            background: #495057 !important;
-            color: white !important;
-        }
-
-        .btn-outline-primary {
-            border-color: var(--accent-primary);
-            color: var(--accent-primary);
-        }
-
-        .btn-outline-primary:hover {
-            background-color: var(--accent-primary);
-            color: white;
-        }
-
-        body.light-mode .btn-outline-primary {
-            border-color: var(--accent-primary) !important;
-            color: var(--accent-primary) !important;
-        }
-
-        body.light-mode .btn-outline-primary:hover {
-            background-color: var(--accent-primary) !important;
-            color: white !important;
-        }
         
         .btn-primary {
-            background: linear-gradient(135deg, #00d4ff, #0891b2);
+            background: linear-gradient(135deg, var(--accent-primary), #0891b2);
             border: none;
             width: 100%;
             padding: 0.75rem;
             font-weight: 600;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
         }
         
         .btn-primary:hover {
@@ -185,15 +201,44 @@ if ($auth->isLoggedIn()) {
             background: rgba(255, 107, 107, 0.1);
             border: 1px solid #ff6b6b;
             color: #ff6b6b;
+            border-radius: 10px;
         }
         
         .user-info {
             background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
             border-radius: 10px;
             padding: 1rem;
             margin-bottom: 1rem;
             font-size: 0.875rem;
             transition: all 0.3s ease;
+            color: var(--text-primary);
+        }
+
+        .user-info strong {
+            color: var(--accent-primary);
+        }
+
+        /* Light mode specific adjustments */
+        body.light-mode .alert-danger {
+            background: rgba(220, 53, 69, 0.1);
+            border: 1px solid #dc3545;
+            color: #dc3545;
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 576px) {
+            .login-container {
+                margin: 1rem;
+                padding: 1.5rem;
+            }
+
+            .theme-toggle {
+                top: 15px;
+                right: 15px;
+                width: 45px;
+                height: 45px;
+            }
         }
     </style>
 </head>
@@ -201,6 +246,7 @@ if ($auth->isLoggedIn()) {
     <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme">
         <i class="fas fa-moon" id="themeIcon"></i>
     </button>
+    
     <div class="login-container">
         <div class="login-header">
             <h2><i class="fas fa-cash-register"></i> Kasir Digital</h2>
@@ -224,17 +270,20 @@ if ($auth->isLoggedIn()) {
                 <label for="username" class="form-label">Username</label>
                 <input type="text" class="form-control" id="username" name="username" required>
             </div>
+            
             <div class="mb-3">
                 <label for="password" class="form-label">Password</label>
                 <div class="input-group">
-                    <input type="password" class="form-control" id="password" name="password" required style="border-right: 0;">
-                    <button class="btn btn-outline-primary d-flex align-items-center justify-content-center" type="button" onclick="togglePassword()" title="Lihat/Sembunyikan Password" style="border-left: 0; width: 45px; height: auto;">
+                    <input type="password" class="form-control" id="password" name="password" required>
+                    <button class="password-toggle-btn" type="button" onclick="togglePassword()" title="Lihat/Sembunyikan Password">
                         <i class="fas fa-eye" id="togglePasswordIcon"></i>
                     </button>
                 </div>
-            </div></div>
+            </div>
+            
             <button type="submit" class="btn btn-primary">
-                <i class="fas fa-sign-in-alt"></i> Login
+                <i class="fas fa-sign-in-alt"></i>
+                <span>Login</span>
             </button>
         </form>
     </div>

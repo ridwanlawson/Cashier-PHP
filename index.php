@@ -386,7 +386,7 @@ $user = $auth->getUser();
             color: #495057;
         }
 
-        .light-mode .modal-content {
+        .modal-content {
             background: #ffffff;
             border: 1px solid #dee2e6;
         }
@@ -520,7 +520,7 @@ $user = $auth->getUser();
                         <i id="theme-icon-desktop" class="fas fa-sun"></i>
                     </button>
                 </div>
-                
+
                 <div class="user-info-sidebar mb-3 p-2" style="background: var(--bg-tertiary); border-radius: 8px; border: 1px solid var(--border-color);">
                     <div class="d-flex align-items-center mb-2">
                         <i class="fas fa-user-circle me-2 text-cyan"></i>
@@ -664,7 +664,7 @@ $user = $auth->getUser();
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Recent Transactions -->
                     <div class="row mt-4">
                         <div class="col-md-6">
@@ -744,10 +744,10 @@ $user = $auth->getUser();
                                                    placeholder="Qty" value="1" min="1">
                                         </div>
                                         <div class="col-sm-4 col-8 mb-2">
-                                            <button class="btn btn-success w-100" onclick="addToCart()">
-                                                <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">Tambah ke</span> Keranjang
-                                            </button>
-                                        </div>
+                            <button class="btn btn-success w-100" onclick="addToCart()">
+                                <i class="fas fa-cart-plus"></i> <span class="d-none d-sm-inline">Tambah</span>
+                            </button>
+                        </div>
                                     </div>
                                     <div id="product-suggestions" class="list-group"></div>
                                 </div>
@@ -849,7 +849,7 @@ $user = $auth->getUser();
                     </div>
                     <div class="card">
                         <div class="card-body">
-                            <div class="table-responsive">
+<div class="table-responsive">
                                 <table class="table table-dark table-striped" id="users-table">
                                     <thead>
                                         <tr>

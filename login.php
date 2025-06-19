@@ -227,12 +227,12 @@ if ($auth->isLoggedIn()) {
             <div class="mb-3">
                 <label for="password" class="form-label">Password</label>
                 <div class="input-group">
-                    <input type="password" class="form-control" id="password" name="password" required>
-                    <button class="btn btn-outline-primary" type="button" onclick="togglePassword()" title="Lihat/Sembunyikan Password">
+                    <input type="password" class="form-control" id="password" name="password" required style="border-right: 0;">
+                    <button class="btn btn-outline-primary d-flex align-items-center justify-content-center" type="button" onclick="togglePassword()" title="Lihat/Sembunyikan Password" style="border-left: 0; width: 45px; height: auto;">
                         <i class="fas fa-eye" id="togglePasswordIcon"></i>
                     </button>
                 </div>
-            </div>
+            </div></div>
             <button type="submit" class="btn btn-primary">
                 <i class="fas fa-sign-in-alt"></i> Login
             </button>

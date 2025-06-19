@@ -42,6 +42,167 @@ function initializeDataTables() {
     }
 }
 
+// Users Management Functions
+async function loadUsers() {
+    try {
+        console.log('Loading users...');
+        const users = await apiRequest('api/users.php');
+
+        if (Array.isArray(users)) {
+            displayUsers(users);
+            console.log('Users loaded successfully');
+        } else if (users.success === false) {
+            throw new Error(users.error || 'Unknown error from server');
+        } else {
+            throw new Error('Unexpected response format');
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+        showAlert('Error loading users: ' + error.message, 'danger');
+    }
+}
+
+function displayUsers(users) {
+    const tbody = document.getElementById('users-tbody');
+    if (!tbody) return;
+
+    // Destroy existing DataTable if it exists
+    if ($.fn.DataTable.isDataTable('#users-table')) {
+        $('#users-table').DataTable().destroy();
+    }
+
+    tbody.innerHTML = '';
+
+    if (!Array.isArray(users) || users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center">Tidak ada pengguna</td></tr>';
+        return;
+    }
+
+    users.forEach(user => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${user.username}</td>
+            <td>${user.name}</td>
+            <td><span class="badge bg-${user.role === 'admin' ? 'danger' : 'info'}">${user.role.toUpperCase()}</span></td>
+            <td>${new Date(user.created_at).toLocaleDateString('id-ID')}</td>
+            <td>
+                <button class="btn btn-warning btn-sm me-1" onclick="editUser(${user.id})">
+                    <i class="fas fa-edit"></i> <span class="d-none d-sm-inline">Edit</span>
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="deleteUser(${user.id})">
+                    <i class="fas fa-trash"></i> <span class="d-none d-sm-inline">Hapus</span>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+
+    // Initialize DataTable
+    try {
+        $('#users-table').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
+            },
+            dom: 'Bfrtip',
+            buttons: [
+                'copy', 'csv', 'excel', 'pdf', 'print'
+            ],
+            pageLength: 25,
+            responsive: true,
+            order: [[3, 'desc']]
+        });
+    } catch (error) {
+        console.error('Error initializing users DataTable:', error);
+    }
+}
+
+function showAddUserModal() {
+    document.getElementById('userModalTitle').textContent = 'Tambah User';
+    document.getElementById('userForm').reset();
+    document.getElementById('user-id').value = '';
+    const modal = new bootstrap.Modal(document.getElementById('userModal'));
+    modal.show();
+}
+
+async function editUser(id) {
+    try {
+        const users = await apiRequest('api/users.php');
+        const user = users.find(u => u.id == id);
+        
+        if (user) {
+            document.getElementById('userModalTitle').textContent = 'Edit User';
+            document.getElementById('user-id').value = user.id;
+            document.getElementById('user-username').value = user.username;
+            document.getElementById('user-name').value = user.name;
+            document.getElementById('user-password').value = '';
+            document.getElementById('user-role').value = user.role;
+            
+            const modal = new bootstrap.Modal(document.getElementById('userModal'));
+            modal.show();
+        }
+    } catch (error) {
+        console.error('Error loading user for edit:', error);
+        showAlert('Error loading user data: ' + error.message, 'danger');
+    }
+}
+
+async function saveUser() {
+    try {
+        const id = document.getElementById('user-id').value;
+        const userData = {
+            username: document.getElementById('user-username').value,
+            name: document.getElementById('user-name').value,
+            password: document.getElementById('user-password').value,
+            role: document.getElementById('user-role').value
+        };
+
+        let response;
+        if (id) {
+            userData.id = id;
+            response = await apiRequest('api/users.php', {
+                method: 'PUT',
+                body: JSON.stringify(userData)
+            });
+        } else {
+            response = await apiRequest('api/users.php', {
+                method: 'POST',
+                body: JSON.stringify(userData)
+            });
+        }
+
+        if (response.success) {
+            showAlert(response.message, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+            loadUsers();
+        } else {
+            throw new Error(response.error || 'Unknown error');
+        }
+    } catch (error) {
+        console.error('Error saving user:', error);
+        showAlert('Error saving user: ' + error.message, 'danger');
+    }
+}
+
+async function deleteUser(id) {
+    if (confirm('Apakah Anda yakin ingin menghapus user ini?')) {
+        try {
+            const response = await apiRequest(`api/users.php?id=${id}`, {
+                method: 'DELETE'
+            });
+
+            if (response.success) {
+                showAlert(response.message, 'success');
+                loadUsers();
+            } else {
+                throw new Error(response.error || 'Unknown error');
+            }
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            showAlert('Error deleting user: ' + error.message, 'danger');
+        }
+    }
+}
+
 // Debounce function to limit API calls
 function debounce(func, wait) {
     let timeout;
@@ -94,6 +255,9 @@ function showPage(pageId, element) {
             break;
         case 'inventory':
             loadInventoryData();
+            break;
+        case 'users':
+            loadUsers();
             break;
     }
 }
@@ -914,44 +1078,59 @@ function printReceipt() {
 // Function to show receipt after transaction
 function showReceipt(transactionId, cartItems, total, payment) {
     const change = payment - total;
+    const now = new Date();
+    
     let receiptHTML = `
-        <div class="center">
-            <h6>STRUK TRANSAKSI #${transactionId}</h6>
-            <small>${new Date().toLocaleString('id-ID')}</small>
+        <div class="transaction-info">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>No. Transaksi:</span>
+                <span><strong>#${transactionId}</strong></span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>Tanggal:</span>
+                <span>${now.toLocaleDateString('id-ID')}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>Waktu:</span>
+                <span>${now.toLocaleTimeString('id-ID')}</span>
+            </div>
         </div>
-        <div class="line"></div>
-        <table>
+        
+        <div class="items-section">
+            <div style="font-weight: bold; margin-bottom: 10px; text-align: center;">DAFTAR BELANJA</div>
     `;
 
     cartItems.forEach(item => {
         receiptHTML += `
-            <tr>
-                <td colspan="2">${item.name}</td>
-            </tr>
-            <tr>
-                <td>${item.quantity} x Rp ${formatNumber(item.price)}</td>
-                <td class="right">Rp ${formatNumber(item.subtotal)}</td>
-            </tr>
+            <div class="item-line">
+                <div class="item-name">${item.name}</div>
+            </div>
+            <div class="item-qty-price">
+                ${item.quantity} x Rp ${formatNumber(item.price)}
+                <span class="item-total" style="float: right;">Rp ${formatNumber(item.subtotal)}</span>
+            </div>
         `;
     });
 
     receiptHTML += `
-        </table>
-        <div class="line"></div>
-        <table>
-            <tr class="total-row">
-                <td><strong>TOTAL:</strong></td>
-                <td class="right"><strong>Rp ${formatNumber(total)}</strong></td>
-            </tr>
-            <tr>
-                <td>Bayar:</td>
-                <td class="right">Rp ${formatNumber(payment)}</td>
-            </tr>
-            <tr>
-                <td>Kembalian:</td>
-                <td class="right">Rp ${formatNumber(change)}</td>
-            </tr>
-        </table>
+        </div>
+        
+        <div class="totals-section">
+            <div class="total-line grand-total">
+                <span><strong>TOTAL BELANJA:</strong></span>
+                <span><strong>Rp ${formatNumber(total)}</strong></span>
+            </div>
+            <div class="payment-info">
+                <div class="total-line">
+                    <span>Tunai:</span>
+                    <span>Rp ${formatNumber(payment)}</span>
+                </div>
+                <div class="total-line">
+                    <span>Kembalian:</span>
+                    <span>Rp ${formatNumber(change)}</span>
+                </div>
+            </div>
+        </div>
     `;
 
     // Show receipt in modal first
@@ -1048,33 +1227,129 @@ function printReceipt() {
                 <title>Struk Pembayaran</title>
                 <style>
                     @page {
-                        size: 58mm auto; /* Ukuran kertas thermal 58mm */
-                        margin: 2mm;
+                        size: 80mm auto;
+                        margin: 5mm;
+                    }
+                    * {
+                        box-sizing: border-box;
                     }
                     body { 
                         font-family: 'Courier New', monospace;
                         margin: 0;
-                        padding: 2mm;
-                        font-size: 8pt;
-                        line-height: 1.1;
+                        padding: 5mm;
+                        font-size: 11pt;
+                        line-height: 1.3;
                         color: #000;
                         background: #fff;
+                        width: 80mm;
                     }
-                    .receipt-container {
-                        width: 100%;
-                        max-width: none;
-                        margin: 0;
+                    .receipt-header {
+                        text-align: center;
+                        border-bottom: 2px solid #000;
+                        padding-bottom: 10px;
+                        margin-bottom: 15px;
                     }
-                    .text-center { text-align: center; }
-                    .text-end { text-align: right; }
+                    .store-name {
+                        font-size: 16pt;
+                        font-weight: bold;
+                        margin-bottom: 5px;
+                    }
+                    .store-info {
+                        font-size: 9pt;
+                        margin-bottom: 3px;
+                    }
+                    .transaction-info {
+                        margin-bottom: 15px;
+                        font-size: 10pt;
+                    }
+                    .items-section {
+                        border-bottom: 1px dashed #000;
+                        padding-bottom: 10px;
+                        margin-bottom: 10px;
+                    }
+                    .item-line {
+                        display: flex;
+                        justify-content: space-between;
+                        margin-bottom: 3px;
+                        font-size: 10pt;
+                    }
+                    .item-name {
+                        flex: 1;
+                        text-align: left;
+                    }
+                    .item-qty-price {
+                        margin: 2px 0;
+                        font-size: 9pt;
+                        color: #666;
+                    }
+                    .item-total {
+                        text-align: right;
+                        font-weight: bold;
+                    }
+                    .totals-section {
+                        font-size: 11pt;
+                    }
+                    .total-line {
+                        display: flex;
+                        justify-content: space-between;
+                        margin-bottom: 5px;
+                        padding: 2px 0;
+                    }
+                    .grand-total {
+                        border-top: 2px solid #000;
+                        border-bottom: 2px solid #000;
+                        font-weight: bold;
+                        font-size: 12pt;
+                        padding: 8px 0;
+                        margin: 10px 0;
+                    }
+                    .payment-info {
+                        margin: 10px 0;
+                    }
+                    .footer {
+                        text-align: center;
+                        margin-top: 20px;
+                        font-size: 9pt;
+                        border-top: 1px dashed #000;
+                        padding-top: 10px;
+                    }
+                    .thank-you {
+                        font-weight: bold;
+                        margin: 10px 0;
+                    }
                     @media print {
-                        body { -webkit-print-color-adjust: exact; }
-                        .receipt-container { page-break-inside: avoid; }
+                        body { 
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                        }
+                        .receipt-container { 
+                            page-break-inside: avoid; 
+                        }
                     }
                 </style>
             </head>
-            <body onload="window.print(); window.close();">
-                ${content}
+            <body>
+                <div class="receipt-container">
+                    <div class="receipt-header">
+                        <div class="store-name">KASIR DIGITAL</div>
+                        <div class="store-info">Jl. Digital Store No. 123</div>
+                        <div class="store-info">Telp: (021) 123-4567</div>
+                    </div>
+                    ${content}
+                    <div class="footer">
+                        <div class="thank-you">*** TERIMA KASIH ***</div>
+                        <div>Barang yang sudah dibeli</div>
+                        <div>tidak dapat dikembalikan</div>
+                        <div style="margin-top: 10px;">www.kasirdigital.com</div>
+                    </div>
+                </div>
+                <script>
+                    window.onload = function() {
+                        setTimeout(function() {
+                            window.print();
+                        }, 500);
+                    }
+                </script>
             </body>
         </html>
     `);

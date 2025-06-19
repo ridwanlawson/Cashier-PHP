@@ -1,3 +1,10 @@
+<?php
+require_once 'auth.php';
+
+$auth = new Auth();
+$auth->requireLogin();
+$user = $auth->getUser();
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -159,6 +166,17 @@
             border: none;
         }
 
+        .btn-outline-light {
+            border-color: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .btn-outline-light:hover {
+            background-color: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: white;
+        }
+
         .form-control {
             background: var(--bg-tertiary);
             border: 1px solid var(--border-color);
@@ -268,6 +286,48 @@
 
         .glow {
             box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+
+        /* Light Mode Specific Styles */
+        .light-mode .btn-outline-light {
+            border-color: #6c757d;
+            color: #495057;
+        }
+
+        .light-mode .btn-outline-light:hover {
+            background-color: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: white;
+        }
+
+        .light-mode .form-control {
+            background: #ffffff;
+            border: 1px solid #ced4da;
+            color: #495057;
+        }
+
+        .light-mode .form-control:focus {
+            background: #ffffff;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 0.2rem rgba(0, 212, 255, 0.25);
+            color: #495057;
+        }
+
+        .light-mode .modal-content {
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+        }
+
+        .light-mode .card {
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            color: #212529;
+        }
+
+        .light-mode .card-header {
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            color: var(--accent-primary);
         }
 
         /* Mobile Optimizations */
@@ -386,6 +446,19 @@
                     <button class="btn btn-outline-light btn-sm" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
                         <i id="theme-icon-desktop" class="fas fa-sun"></i>
                     </button>
+                </div>
+                
+                <div class="user-info-sidebar mb-3 p-2" style="background: var(--bg-tertiary); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-user-circle me-2 text-cyan"></i>
+                        <small class="text-truncate"><?= htmlspecialchars($user['name']) ?></small>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-secondary"><?= ucfirst($user['role']) ?></small>
+                        <a href="logout.php" class="btn btn-outline-danger btn-sm" title="Logout">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </a>
+                    </div>
                 </div>
                 <ul class="nav flex-column">
                     <li class="nav-item mb-2">
@@ -673,6 +746,40 @@
                         <i class="fas fa-print"></i> Cetak Struk
                     </button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock Modal -->
+    <div class="modal fade" id="stockModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-cyan">Tambah Stok Barang</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="stockForm">
+                        <div class="mb-3">
+                            <label for="stock-product" class="form-label">Pilih Produk</label>
+                            <select class="form-control" id="stock-product" required>
+                                <option value="">-- Pilih Produk --</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="stock-quantity" class="form-label">Jumlah Masuk</label>
+                            <input type="number" class="form-control" id="stock-quantity" required min="1">
+                        </div>
+                        <div class="mb-3">
+                            <label for="stock-notes" class="form-label">Keterangan</label>
+                            <textarea class="form-control" id="stock-notes" rows="3" placeholder="Keterangan tambahan (opsional)"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary" onclick="addStock()">Tambah Stok</button>
                 </div>
             </div>
         </div>

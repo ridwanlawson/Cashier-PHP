@@ -1035,9 +1035,12 @@ function applyTheme(theme) {
     const root = document.documentElement;
     
     if (theme === 'light') {
+        document.body.classList.add('light-mode');
+        document.body.classList.remove('dark-mode');
+        
         root.style.setProperty('--bg-primary', '#f8f9fa');
         root.style.setProperty('--bg-secondary', '#ffffff');
-        root.style.setProperty('--bg-tertiary', '#e9ecef');
+        root.style.setProperty('--bg-tertiary', '#f8f9fa');
         root.style.setProperty('--text-primary', '#212529');
         root.style.setProperty('--text-secondary', '#6c757d');
         root.style.setProperty('--border-color', '#dee2e6');
@@ -1049,15 +1052,11 @@ function applyTheme(theme) {
             table.classList.add('table-light');
         });
         
-        // Update form controls
-        document.querySelectorAll('.form-control').forEach(input => {
-            input.style.backgroundColor = '#ffffff';
-            input.style.color = '#212529';
-            input.style.borderColor = '#ced4da';
-        });
-        
         document.body.style.background = 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)';
     } else {
+        document.body.classList.add('dark-mode');
+        document.body.classList.remove('light-mode');
+        
         root.style.setProperty('--bg-primary', '#0f1419');
         root.style.setProperty('--bg-secondary', '#1a202c');
         root.style.setProperty('--bg-tertiary', '#2d3748');
@@ -1070,13 +1069,6 @@ function applyTheme(theme) {
         document.querySelectorAll('.table-light').forEach(table => {
             table.classList.remove('table-light');
             table.classList.add('table-dark');
-        });
-        
-        // Reset form controls
-        document.querySelectorAll('.form-control').forEach(input => {
-            input.style.backgroundColor = '';
-            input.style.color = '';
-            input.style.borderColor = '';
         });
         
         document.body.style.background = 'linear-gradient(135deg, #0f1419 0%, #1a202c 100%)';

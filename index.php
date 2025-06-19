@@ -650,6 +650,11 @@ $user = $auth->getUser();
                             <i class="fas fa-users me-2"></i> Kelola User
                         </a>
                     </li>
+                    <li class="nav-item mb-2">
+                        <a class="nav-link" href="#" onclick="showPage('settings', this)">
+                            <i class="fas fa-cog me-2"></i> Pengaturan
+                        </a>
+                    </li>
                     <?php endif; ?>
                 </ul>
             </div>
@@ -949,6 +954,92 @@ $user = $auth->getUser();
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- Settings Page (Admin Only) -->
+                <?php if ($user['role'] === 'admin'): ?>
+                <div id="settings" class="page-content d-none">
+                    <h2 class="mb-4 text-cyan">Pengaturan Aplikasi</h2>
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-cog"></i> Customisasi Aplikasi</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="settingsForm">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-cyan mb-3">Informasi Aplikasi</h6>
+                                        <div class="mb-3">
+                                            <label for="app-name" class="form-label">Nama Aplikasi</label>
+                                            <input type="text" class="form-control" id="app-name" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="logo-url" class="form-label">URL Logo</label>
+                                            <input type="url" class="form-control" id="logo-url" placeholder="https://example.com/logo.png">
+                                            <small class="text-muted">Link gambar logo (opsional)</small>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="currency" class="form-label">Mata Uang</label>
+                                            <input type="text" class="form-control" id="currency" value="Rp" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="tax-rate" class="form-label">Tarif Pajak (%)</label>
+                                            <input type="number" class="form-control" id="tax-rate" min="0" max="100" step="0.01" value="0">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-cyan mb-3">Informasi Toko</h6>
+                                        <div class="mb-3">
+                                            <label for="store-name" class="form-label">Nama Toko</label>
+                                            <input type="text" class="form-control" id="store-name" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="store-address" class="form-label">Alamat Toko</label>
+                                            <textarea class="form-control" id="store-address" rows="3" required></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="store-phone" class="form-label">No. Telepon</label>
+                                            <input type="tel" class="form-control" id="store-phone" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="store-email" class="form-label">Email</label>
+                                            <input type="email" class="form-control" id="store-email">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="store-website" class="form-label">Website</label>
+                                            <input type="url" class="form-control" id="store-website" placeholder="www.example.com">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="store-social-media" class="form-label">Social Media</label>
+                                            <input type="text" class="form-control" id="store-social-media" placeholder="@username">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-12">
+                                        <h6 class="text-cyan mb-3">Pengaturan Struk</h6>
+                                        <div class="mb-3">
+                                            <label for="receipt-header" class="form-label">Header Struk</label>
+                                            <textarea class="form-control" id="receipt-header" rows="2" placeholder="Teks tambahan di atas struk (opsional)"></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="receipt-footer" class="form-label">Footer Struk</label>
+                                            <textarea class="form-control" id="receipt-footer" rows="2" required></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <button type="button" class="btn btn-secondary" onclick="loadSettings()">
+                                        <i class="fas fa-undo"></i> Reset
+                                    </button>
+                                    <button type="button" class="btn btn-primary" onclick="saveSettings()">
+                                        <i class="fas fa-save"></i> Simpan Pengaturan
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>

@@ -128,7 +128,7 @@ async function editUser(id) {
     try {
         const users = await apiRequest('api/users.php');
         const user = users.find(u => u.id == id);
-        
+
         if (user) {
             document.getElementById('userModalTitle').textContent = 'Edit User';
             document.getElementById('user-id').value = user.id;
@@ -136,7 +136,7 @@ async function editUser(id) {
             document.getElementById('user-name').value = user.name;
             document.getElementById('user-password').value = '';
             document.getElementById('user-role').value = user.role;
-            
+
             const modal = new bootstrap.Modal(document.getElementById('userModal'));
             modal.show();
         }
@@ -259,6 +259,9 @@ function showPage(pageId, element) {
         case 'users':
             loadUsers();
             break;
+        case 'settings':
+            loadSettings();
+            break;
     }
 }
 
@@ -329,7 +332,7 @@ async function loadDashboardStats() {
 
         // Load recent transactions
         loadRecentTransactions();
-        
+
         // Load low stock products
         loadLowStockProducts();
 
@@ -345,9 +348,9 @@ async function loadRecentTransactions() {
     try {
         const transactions = await apiRequest('api/transactions.php?recent=5');
         const container = document.getElementById('recent-transactions');
-        
+
         if (!container) return;
-        
+
         if (!Array.isArray(transactions) || transactions.length === 0) {
             container.innerHTML = '<p class="text-center text-muted">Tidak ada transaksi terbaru</p>';
             return;
@@ -382,9 +385,9 @@ async function loadLowStockProducts() {
     try {
         const products = await apiRequest('api/products.php?lowstock=5');
         const container = document.getElementById('low-stock-products');
-        
+
         if (!container) return;
-        
+
         if (!Array.isArray(products) || products.length === 0) {
             container.innerHTML = '<p class="text-center text-muted">Semua produk stok aman</p>';
             return;
@@ -1079,7 +1082,7 @@ function printReceipt() {
 function showReceipt(transactionId, cartItems, total, payment) {
     const change = payment - total;
     const now = new Date();
-    
+
     let receiptHTML = `
         <div class="transaction-info">
             <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
@@ -1095,7 +1098,7 @@ function showReceipt(transactionId, cartItems, total, payment) {
                 <span>${now.toLocaleTimeString('id-ID')}</span>
             </div>
         </div>
-        
+
         <div class="items-section">
             <div style="font-weight: bold; margin-bottom: 10px; text-align: center;">DAFTAR BELANJA</div>
     `;
@@ -1114,7 +1117,7 @@ function showReceipt(transactionId, cartItems, total, payment) {
 
     receiptHTML += `
         </div>
-        
+
         <div class="totals-section">
             <div class="total-line grand-total">
                 <span><strong>TOTAL BELANJA:</strong></span>
@@ -1220,6 +1223,17 @@ async function viewTransactionDetail(id) {
 
 function printReceipt() {
     const content = document.getElementById('transaction-detail').innerHTML;
+	const storeName = appSettings.store_name || 'Kasir Digital';
+    const storeAddress = appSettings.store_address || 'Alamat Tidak Tersedia';
+    const storePhone = appSettings.store_phone || 'Telepon Tidak Tersedia';
+    const storeEmail = appSettings.store_email || '';
+    const storeWebsite = appSettings.store_website || '';
+    const storeSocialMedia = appSettings.store_social_media || '';
+    const receiptFooter = appSettings.receipt_footer || 'Terima kasih atas kunjungan Anda!';
+    const receiptHeader = appSettings.receipt_header || '';
+    const currency = appSettings.currency || 'Rp';
+
+
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
         <html>
@@ -1608,6 +1622,92 @@ async function addStock() {
     }
 }
 
+// Settings Management Functions
+let appSettings = {};
+
+async function loadSettings() {
+    try {
+        console.log('Loading app settings...');
+        const settings = await apiRequest('api/settings.php');
+        appSettings = settings;
+
+        // Update form fields
+        document.getElementById('app-name').value = settings.app_name || 'Kasir Digital';
+        document.getElementById('store-name').value = settings.store_name || '';
+        document.getElementById('store-address').value = settings.store_address || '';
+        document.getElementById('store-phone').value = settings.store_phone || '';
+        document.getElementById('store-email').value = settings.store_email || '';
+        document.getElementById('store-website').value = settings.store_website || '';
+        document.getElementById('store-social-media').value = settings.store_social_media || '';
+        document.getElementById('receipt-footer').value = settings.receipt_footer || '';
+        document.getElementById('receipt-header').value = settings.receipt_header || '';
+        document.getElementById('currency').value = settings.currency || 'Rp';
+        document.getElementById('logo-url').value = settings.logo_url || '';
+        document.getElementById('tax-rate').value = settings.tax_rate || 0;
+
+        console.log('Settings loaded successfully');
+    } catch (error) {
+        console.error('Error loading settings:', error);
+        showAlert('Error loading settings: ' + error.message, 'danger');
+    }
+}
+
+async function saveSettings() {
+    try {
+        const formData = {
+            app_name: document.getElementById('app-name').value,
+            store_name: document.getElementById('store-name').value,
+            store_address: document.getElementById('store-address').value,
+            store_phone: document.getElementById('store-phone').value,
+            store_email: document.getElementById('store-email').value,
+            store_website: document.getElementById('store-website').value,
+            store_social_media: document.getElementById('store-social-media').value,
+            receipt_footer: document.getElementById('receipt-footer').value,
+            receipt_header: document.getElementById('receipt-header').value,
+            currency: document.getElementById('currency').value,
+            logo_url: document.getElementById('logo-url').value,
+            tax_rate: parseFloat(document.getElementById('tax-rate').value) || 0
+        };
+
+        console.log('Saving settings...', formData);
+        const response = await apiRequest('api/settings.php', {
+            method: 'POST',
+            body: JSON.stringify(formData)
+        });
+
+        if (response.success) {
+            appSettings = formData;
+            showAlert('Pengaturan berhasil disimpan!', 'success');
+
+            // Update app title dynamically
+            updateAppTitle();
+        } else {
+            throw new Error(response.error || 'Failed to save settings');
+        }
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        showAlert('Error saving settings: ' + error.message, 'danger');
+    }
+}
+
+function updateAppTitle() {
+    // Update page title and headers
+    const appName = appSettings.app_name || 'Kasir Digital';
+    document.title = appName;
+
+    // Update sidebar title
+    const sidebarTitles = document.querySelectorAll('.sidebar h4');
+    sidebarTitles.forEach(title => {
+        title.innerHTML = `<i class="fas fa-cash-register"></i> ${appName}`;
+    });
+
+    // Update mobile header
+    const mobileTitle = document.querySelector('.mobile-header h5');
+    if (mobileTitle) {
+        mobileTitle.innerHTML = `<i class="fas fa-cash-register"></i> ${appName}`;
+    }
+}
+
 // Dark/Light Mode Toggle Functions
 function toggleTheme() {
     const currentTheme = localStorage.getItem('theme') || 'dark';
@@ -1706,26 +1806,30 @@ function applyTheme(theme) {
 
 // Initialize theme on page load
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Page loaded, initializing...');
+
+    // Apply saved theme
     const savedTheme = localStorage.getItem('theme') || 'dark';
     applyTheme(savedTheme);
 
-    const iconClass = savedTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
-    const themeIcon = document.getElementById('theme-icon');
-    const themeIconDesktop = document.getElementById('theme-icon-desktop');
+    // Load app settings first
+    loadSettings().then(() => {
+        // Load dashboard data
+        loadDashboardStats();
+    }).catch(error => {
+        console.error('Failed to load settings:', error);
+        // Load dashboard anyway
+        loadDashboardStats();
+    });
 
-    if (themeIcon) {
-        themeIcon.className = iconClass;
-    }
-    if (themeIconDesktop) {
-        themeIconDesktop.className = iconClass;
-    }
+    console.log('Initialization complete');
 });
 
 // Print receipt for specific transaction
 async function printTransactionReceipt(transactionId) {
     try {
         const transaction = await apiRequest(`api/transactions.php?id=${transactionId}`);
-        
+
         if (transaction && transaction.id) {
             let receiptHTML = `
                 <div class="center">
@@ -1799,3 +1903,5 @@ window.addStock = addStock;
 window.toggleTheme = toggleTheme;
 window.updateMarginLabel = updateMarginLabel;
 window.calculateSellingPrice = calculateSellingPrice;
+window.loadSettings = loadSettings;
+window.saveSettings = saveSettings;

@@ -68,7 +68,24 @@ class Database {
             )",
             "INSERT OR IGNORE INTO users (username, password, name, role) VALUES 
              ('admin', 'password', 'Administrator', 'admin'),
-             ('kasir', 'password', 'Kasir', 'kasir')"
+             ('kasir', 'password', 'Kasir', 'kasir')",
+            "CREATE TABLE IF NOT EXISTS app_settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                app_name TEXT DEFAULT 'Kasir Digital',
+                store_name TEXT DEFAULT 'Toko ABC',
+                store_address TEXT DEFAULT 'Jl. Contoh No. 123',
+                store_phone TEXT DEFAULT '021-12345678',
+                store_email TEXT DEFAULT 'info@example.com',
+                store_website TEXT DEFAULT 'www.example.com',
+                store_social_media TEXT DEFAULT '@example',
+                receipt_footer TEXT DEFAULT 'Terima kasih atas kunjungan Anda',
+                receipt_header TEXT DEFAULT '',
+                currency TEXT DEFAULT 'Rp',
+                logo_url TEXT DEFAULT '',
+                tax_rate REAL DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )"
         ];
 
         foreach($queries as $query) {

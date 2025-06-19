@@ -36,69 +36,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // Initialize DataTables for all tables
 function initializeDataTables() {
     try {
-        // Skip initializing tables that will be populated dynamically
         console.log('DataTables will be initialized when data is loaded');
     } catch (error) {
         console.error('Error in DataTables initialization:', error);
-    }
-}
-
-        // Transactions table
-        if ($.fn.DataTable.isDataTable('#transactions-table')) {
-            $('#transactions-table').DataTable().destroy();
-        }
-        $('#transactions-table').DataTable({
-            language: {
-                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
-            },
-            dom: 'Bfrtip',
-            buttons: [
-                'copy', 'csv', 'excel', 'pdf', 'print'
-            ],
-            pageLength: 25,
-            responsive: true,
-            order: [[1, 'desc']]
-        });
-
-        // Inventory table
-        if ($.fn.DataTable.isDataTable('#inventory-table')) {
-            $('#inventory-table').DataTable().destroy();
-        }
-        $('#inventory-table').DataTable({
-            language: {
-                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
-            },
-            dom: 'Bfrtip',
-            buttons: [
-                'copy', 'csv', 'excel', 'pdf', 'print'
-            ],
-            pageLength: 25,
-            responsive: true,
-            order: [[0, 'desc']]
-        });
-
-        // Users table (if exists)
-        if ($('#users-table').length > 0) {
-            if ($.fn.DataTable.isDataTable('#users-table')) {
-                $('#users-table').DataTable().destroy();
-            }
-            $('#users-table').DataTable({
-                language: {
-                    url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
-                },
-                dom: 'Bfrtip',
-                buttons: [
-                    'copy', 'csv', 'excel', 'pdf', 'print'
-                ],
-                pageLength: 25,
-                responsive: true,
-                order: [[3, 'desc']]
-            });
-        }
-
-        console.log('DataTables initialized successfully');
-    } catch (error) {
-        console.error('Error initializing DataTables:', error);
     }
 }
 

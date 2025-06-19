@@ -142,7 +142,9 @@ try {
 
                 $db->commit();
 
-                ob_clean();
+                if (ob_get_level()) {
+                    ob_clean();
+                }
                 echo json_encode([
                     'success' => true,
                     'message' => 'Stock added successfully',

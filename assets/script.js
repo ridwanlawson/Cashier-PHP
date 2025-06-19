@@ -961,7 +961,7 @@ async function viewTransactionDetail(transactionId) {
             return;
         }
 
-        let detailHTML = `
+        let tableHTML = `
             <div class="mb-3">
                 <h6>Transaksi #${transaction.id}</h6>
                 <p class="text-muted">${new Date(transaction.transaction_date).toLocaleString('id-ID')}</p>
@@ -979,7 +979,7 @@ async function viewTransactionDetail(transactionId) {
         `;
 
         transaction.items.forEach(item => {
-            detailHTML += `
+            tableHTML += `
                 <tr>
                     <td>${item.product_name}</td>
                     <td>${item.quantity}</td>
@@ -989,21 +989,191 @@ async function viewTransactionDetail(transactionId) {
             `;
         });
 
-        detailHTML += `
+        tableHTML += `
                 </tbody>
             </table>
-            <div class="text-end">
-                <h6>Total: ${appSettings.currency || 'Rp'} ${formatNumber(transaction.total)}</h6>
+            <div class="border-top pt-2">
+                <div class="row">
+                    <div class="col-6"><strong>Total:</strong></div>
+                    <div class="col-6 text-end"><strong>${appSettings.currency || 'Rp'} ${formatNumber(transaction.total)}</strong></div>
+                </div>
+            </div>
+            <div class="mt-3">
+                <button class="btn btn-primary" onclick="printTransactionReceipt(${transactionId})">
+                    <i class="fas fa-print"></i> Cetak Struk
+                </button>
             </div>
         `;
 
-        document.getElementById('transaction-detail').innerHTML = detailHTML;
+        // Show modal with table data
+        document.getElementById('transaction-detail').innerHTML = tableHTML;
         new bootstrap.Modal(document.getElementById('transactionModal')).show();
 
     } catch (error) {
-        console.error('Error loading transaction detail:', error);
-        showAlert('Gagal memuat detail transaksi', 'danger');
+        console.error('Error viewing transaction detail:', error);
+        showAlert('Gagal mengambil detail transaksi', 'danger');
     }
+}
+
+async function printTransactionReceipt(transactionId) {
+    try {
+        const transaction = await apiRequest(`api/transactions.php?id=${transactionId}`);
+
+        if (!transaction) {
+            showAlert('Transaksi tidak ditemukan', 'danger');
+            return;
+        }
+
+        const receiptHTML = generateReceiptHTML(transaction.items, transaction);
+
+        // Create print window
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Struk Transaksi #${transaction.id}</title>
+                <style>
+                    body { 
+                        font-family: 'Courier New', monospace; 
+                        font-size: 12px; 
+                        line-height: 1.4; 
+                        max-width: 300px; 
+                        margin: 0 auto; 
+                        padding: 10px;
+                        background: white;
+                        color: black;
+                    }
+                    .text-center { text-align: center; }
+                    .text-left { text-align: left; }
+                    .text-right { text-align: right; }
+                    .separator { border-top: 1px dashed #000; margin: 8px 0; }
+                    .receipt-header { margin-bottom: 15px; }
+                    .receipt-body { margin: 15px 0; }
+                    .receipt-footer { margin-top: 15px; }
+                    table { width: 100%; border-collapse: collapse; }
+                    td { padding: 2px 0; }
+                    .item-line { display: flex; justify-content: space-between; }
+                    .bold { font-weight: bold; }
+                    @media print {
+                        body { margin: 0; padding: 5px; }
+                    }
+                </style>
+            </head>
+            <body>
+                ${receiptHTML}
+                <script>
+                    window.onload = function() {
+                        window.print();
+                        window.onafterprint = function() {
+                            window.close();
+                        }
+                    }
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+
+    } catch (error) {
+        console.error('Error printing receipt:', error);
+        showAlert('Gagal mencetak struk', 'danger');
+    }
+}
+
+function generateReceiptHTML(cartItems, transactionData = null) {
+    const currentDate = transactionData ? new Date(transactionData.transaction_date) : new Date();
+
+    let receiptHTML = `
+        <div class="text-center receipt-header">
+            ${appSettings.receipt_header ? `<div class="bold">${appSettings.receipt_header}</div>` : ''}
+            <div class="bold" style="font-size: 14px;">${appSettings.store_name || 'Toko ABC'}</div>
+            <div>${appSettings.store_address || 'Alamat Toko'}</div>
+            <div>Tel: ${appSettings.store_phone || '021-12345678'}</div>
+            ${appSettings.store_email ? `<div>Email: ${appSettings.store_email}</div>` : ''}
+            ${appSettings.store_website ? `<div>Web: ${appSettings.store_website}</div>` : ''}
+            ${appSettings.store_social_media ? `<div>Social: ${appSettings.store_social_media}</div>` : ''}
+        </div>
+
+        <div class="separator"></div>
+
+        <div class="receipt-body">
+            <div style="display: flex; justify-content: space-between;">
+                <span>Tanggal:</span>
+                <span>${currentDate.toLocaleString('id-ID')}</span>
+            </div>
+            ${transactionData ? `<div style="display: flex; justify-content: space-between;">
+                <span>No. Transaksi:</span>
+                <span>#${transactionData.id}</span>
+            </div>` : ''}
+        </div>
+
+        <div class="separator"></div>`;
+
+    // Items list
+    cartItems.forEach(item => {
+        const itemName = item.product_name || item.name || 'Unknown';
+        const price = item.price;
+        const qty = item.quantity;
+        const subtotal = item.subtotal;
+
+        receiptHTML += `
+            <div style="margin: 5px 0;">
+                <div>${itemName}</div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>${qty} x ${appSettings.currency || 'Rp'} ${formatNumber(price)}</span>
+                    <span>${appSettings.currency || 'Rp'} ${formatNumber(subtotal)}</span>
+                </div>
+            </div>
+        `;
+    });
+
+    const subtotal = cartItems.reduce((sum, item) => sum + item.subtotal, 0);
+    const taxEnabled = appSettings.tax_enabled || false;
+    const taxRate = parseFloat(appSettings.tax_rate) || 0;
+    const taxAmount = taxEnabled && taxRate > 0 ? subtotal * (taxRate / 100) : 0;
+
+    receiptHTML += `
+        <div class="separator"></div>
+
+        <div style="margin: 10px 0;">
+            <div style="display: flex; justify-content: space-between;">
+                <span>Subtotal:</span>
+                <span>${appSettings.currency || 'Rp'} ${formatNumber(subtotal)}</span>
+            </div>
+    `;
+
+    if (taxEnabled && taxAmount > 0) {
+        receiptHTML += `
+            <div style="display: flex; justify-content: space-between;">
+                <span>Pajak (${taxRate}%):</span>
+                <span>${appSettings.currency || 'Rp'} ${formatNumber(taxAmount)}</span>
+            </div>
+        `;
+    }
+
+    const total = transactionData ? transactionData.total : (subtotal + taxAmount);
+
+    receiptHTML += `
+            <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; margin-top: 5px; padding-top: 5px; border-top: 1px solid #000;">
+                <span>TOTAL:</span>
+                <span>${appSettings.currency || 'Rp'} ${formatNumber(total)}</span>
+            </div>
+        </div>
+
+        <div class="separator"></div>
+
+        <div class="text-center receipt-footer">
+            <div style="margin: 10px 0;">
+                ${appSettings.receipt_footer || 'Terima kasih atas kunjungan Anda'}
+            </div>
+            <div style="font-size: 10px;">
+                Powered by ${appSettings.app_name || 'Kasir Digital'}
+            </div>
+        </div>
+    `;
+
+    return receiptHTML;
 }
 
 // Inventory functions
@@ -1337,78 +1507,6 @@ function printReceipt() {
     `);
     printWindow.document.close();
     printWindow.print();
-}
-
-async function printTransactionReceipt(transactionId) {
-    try {
-        const transaction = await apiRequest(`api/transactions.php?id=${transactionId}`);
-
-        if (transaction && transaction.id) {
-            let receiptHTML = `
-                <div class="center">
-                    ${appSettings.receipt_header ? `<div><small>${appSettings.receipt_header}</small></div>` : ''}
-                    <h4>${appSettings.store_name || 'Toko ABC'}</h4>
-                    ${appSettings.store_address ? `<div>${appSettings.store_address}</div>` : ''}
-                    ${appSettings.store_phone ? `<div>Tel: ${appSettings.store_phone}</div>` : ''}
-                    ${appSettings.store_email ? `<div>Email: ${appSettings.store_email}</div>` : ''}
-                </div>
-                <div class="line"></div>
-                <div class="center">
-                    <h6>STRUK TRANSAKSI #${transaction.id}</h6>
-                    <small>${new Date(transaction.transaction_date).toLocaleString('id-ID')}</small>
-                </div>
-                <div class="line"></div>
-                <table>
-            `;
-
-            transaction.items.forEach(item => {
-                receiptHTML += `
-                    <tr>
-                        <td>${item.product_name}</td>
-                        <td class="text-end">${item.quantity} x ${formatNumber(item.price)}</td>
-                        <td class="text-end">${formatNumber(item.subtotal)}</td>
-                    </tr>
-                `;
-            });
-
-            receiptHTML += `
-                </table>
-                <div class="line"></div>
-                <div class="total">
-                    <strong>Total: ${appSettings.currency || 'Rp'} ${formatNumber(transaction.total)}</strong>
-                </div>
-                <div class="center">
-                    <small>${appSettings.receipt_footer || 'Terima kasih atas kunjungan Anda'}</small>
-                </div>
-            `;
-
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <html>
-                <head>
-                    <title>Struk Transaksi #${transaction.id}</title>
-                    <style>
-                        body { font-family: monospace; font-size: 12px; margin: 20px; }
-                        .center { text-align: center; }
-                        .text-end { text-align: right; }
-                        .line { border-top: 1px dashed #000; margin: 10px 0; }
-                        .total { text-align: center; margin: 10px 0; }
-                        table { width: 100%; }
-                        td { padding: 2px 0; }
-                    </style>
-                </head>
-                <body>
-                    ${receiptHTML}
-                </body>
-                </html>
-            `);
-            printWindow.document.close();
-            printWindow.print();
-        }
-    } catch (error) {
-        console.error('Error printing receipt:', error);
-        showAlert('Gagal mencetak struk', 'danger');
-    }
 }
 
 // Mobile menu functions

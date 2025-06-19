@@ -35,8 +35,10 @@ class Database {
             )",
             "CREATE TABLE IF NOT EXISTS transactions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                transaction_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-                total REAL NOT NULL
+                subtotal REAL NOT NULL DEFAULT 0,
+                tax_amount REAL NOT NULL DEFAULT 0,
+                total REAL NOT NULL,
+                transaction_date DATETIME DEFAULT CURRENT_TIMESTAMP
             )",
             "CREATE TABLE IF NOT EXISTS transaction_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

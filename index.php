@@ -1115,7 +1115,7 @@ $user = $auth->getUser();
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-primary" onclick="printReceipt()">
-                        <i class="fas fa-print"></i> Cetak Struk
+                        <i class="fas fa-print"></i> Cetak sStruk
                     </button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
                 </div>

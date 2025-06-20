@@ -35,7 +35,7 @@ try {
     switch($method) {
         case 'GET':
             // Get settings - allow all authenticated users to read settings
-            $query = "SELECT * FROM settings LIMIT 1";
+            $query = "SELECT * FROM app_settings LIMIT 1";
             $stmt = $db->prepare($query);
             $stmt->execute();
             $settings = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -95,7 +95,7 @@ try {
             }
 
             // Check if settings table exists, create if not
-            $createTable = "CREATE TABLE IF NOT EXISTS settings (
+            $createTable = "CREATE TABLE IF NOT EXISTS app_settings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 app_name TEXT NOT NULL,
                 store_name TEXT NOT NULL,
@@ -118,14 +118,14 @@ try {
             $db->exec($createTable);
 
             // Check if settings exist
-            $checkQuery = "SELECT id FROM settings LIMIT 1";
+            $checkQuery = "SELECT id FROM app_settings LIMIT 1";
             $checkStmt = $db->prepare($checkQuery);
             $checkStmt->execute();
             $existingSettings = $checkStmt->fetch();
 
             if ($existingSettings) {
                 // Update existing settings
-                $updateQuery = "UPDATE settings SET 
+                $updateQuery = "UPDATE app_settings SET 
                     app_name = ?, store_name = ?, store_address = ?, store_phone = ?, 
                     store_email = ?, store_website = ?, store_social_media = ?, 
                     receipt_header = ?, receipt_footer = ?, currency = ?, logo_url = ?, 
@@ -154,7 +154,7 @@ try {
                 ]);
             } else {
                 // Insert new settings
-                $insertQuery = "INSERT INTO settings (
+                $insertQuery = "INSERT INTO app_settings (
                     app_name, store_name, store_address, store_phone, store_email, 
                     store_website, store_social_media, receipt_header, receipt_footer, 
                     currency, logo_url, tax_enabled, tax_rate, points_per_amount, points_value

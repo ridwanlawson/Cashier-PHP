@@ -25,21 +25,39 @@ try {
                 
                 if ($transaction) {
                     $transaction['id'] = (int)$transaction['id'];
-                    $transaction['cart_data'] = json_decode($transaction['cart_data'], true);
+                    // Handle both 'items' and 'cart_data' column names
+                    if (isset($transaction['items'])) {
+                        $transaction['cart_data'] = json_decode($transaction['items'], true);
+                    } else if (isset($transaction['cart_data'])) {
+                        $transaction['cart_data'] = json_decode($transaction['cart_data'], true);
+                    } else {
+                        $transaction['cart_data'] = [];
+                    }
                     echo json_encode($transaction);
                 } else {
                     echo json_encode(null);
                 }
             } else {
                 // Get all held transactions
-                $query = "SELECT * FROM held_transactions ORDER BY created_at DESC";
+                $query = "SELECT * FROM held_transactions ORDER BY held_at DESC";
                 $stmt = $db->prepare($query);
                 $stmt->execute();
                 $held = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
                 foreach($held as &$transaction) {
                     $transaction['id'] = (int)$transaction['id'];
-                    $transaction['cart_data'] = json_decode($transaction['cart_data'], true);
+                    // Handle both 'items' and 'cart_data' column names
+                    if (isset($transaction['items'])) {
+                        $transaction['cart_data'] = json_decode($transaction['items'], true);
+                    } else if (isset($transaction['cart_data'])) {
+                        $transaction['cart_data'] = json_decode($transaction['cart_data'], true);
+                    } else {
+                        $transaction['cart_data'] = [];
+                    }
+                    // Set created_at if doesn't exist
+                    if (!isset($transaction['created_at']) && isset($transaction['held_at'])) {
+                        $transaction['created_at'] = $transaction['held_at'];
+                    }
                 }
                 
                 echo json_encode($held);
@@ -54,12 +72,24 @@ try {
                 throw new Exception('Cart data and note are required');
             }
             
-            $query = "INSERT INTO held_transactions (cart_data, note, created_at) VALUES (?, ?, datetime('now'))";
-            $stmt = $db->prepare($query);
-            $result = $stmt->execute([
-                json_encode($data['cart']),
-                $data['note']
-            ]);
+            // Try to insert using new schema first, fall back to old schema
+            try {
+                $query = "INSERT INTO held_transactions (cart_data, note, created_at) VALUES (?, ?, datetime('now'))";
+                $stmt = $db->prepare($query);
+                $result = $stmt->execute([
+                    json_encode($data['cart']),
+                    $data['note'] ?? ''
+                ]);
+            } catch (Exception $e) {
+                // Fallback to old schema
+                $query = "INSERT INTO held_transactions (items, member, payment_method, held_at) VALUES (?, ?, ?, datetime('now'))";
+                $stmt = $db->prepare($query);
+                $result = $stmt->execute([
+                    json_encode($data['cart']),
+                    $data['note'] ?? '',
+                    'cash'
+                ]);
+            }
             
             if ($result) {
                 echo json_encode(['success' => true, 'id' => $db->lastInsertId()]);

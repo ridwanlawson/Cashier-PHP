@@ -103,6 +103,9 @@ class Database {
                 payment_method TEXT DEFAULT 'cash',
                 held_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )",
+            "ALTER TABLE held_transactions ADD COLUMN cart_data TEXT",
+            "ALTER TABLE held_transactions ADD COLUMN note TEXT",
+            "ALTER TABLE held_transactions ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP",
             "ALTER TABLE transactions ADD COLUMN cashier_id INTEGER DEFAULT NULL",
             "ALTER TABLE transactions ADD COLUMN member_id INTEGER DEFAULT NULL",
             "ALTER TABLE transactions ADD COLUMN payment_method TEXT DEFAULT 'cash'",

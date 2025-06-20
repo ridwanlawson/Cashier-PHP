@@ -18,12 +18,19 @@ async function apiRequest(url, options = {}) {
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorText = await response.text();
+            console.error(`HTTP ${response.status}: ${errorText}`);
+            throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
         }
 
-        return await response.json();
+        const result = await response.json();
+        return result;
     } catch (error) {
         console.error('API request failed:', error);
+        if (error.name === 'SyntaxError') {
+            console.error('Invalid JSON response from server');
+            throw new Error('Invalid server response');
+        }
         throw error;
     }
 }
@@ -1006,9 +1013,10 @@ function displayTransactions() {
 
 async function viewTransactionDetail(transactionId) {
     try {
+        console.log('Loading transaction detail for ID:', transactionId);
         const transaction = await apiRequest(`api/transactions.php?id=${transactionId}`);
 
-        if (!transaction) {
+        if (!transaction || !transaction.id) {
             showAlert('Transaksi tidak ditemukan', 'danger');
             return;
         }
@@ -1617,16 +1625,23 @@ async function searchMember() {
 }
 
 function displayMemberSuggestions(members) {
-    const container = document.getElementById('member-suggestions');
+    let container = document.getElementById('member-suggestions');
     if (!container) {
         // Create suggestions container if not exists
-        const memberCard = document.querySelector('#member-search').closest('.card-body');
-        const suggestionsDiv = document.createElement('div');
-        suggestionsDiv.id = 'member-suggestions';
-        suggestionsDiv.className = 'list-group mt-2';
-        memberCard.appendChild(suggestionsDiv);
-        return displayMemberSuggestions(members);
+        const memberSearchInput = document.getElementById('member-search');
+        if (memberSearchInput) {
+            const memberCard = memberSearchInput.closest('.card-body');
+            if (memberCard) {
+                const suggestionsDiv = document.createElement('div');
+                suggestionsDiv.id = 'member-suggestions';
+                suggestionsDiv.className = 'list-group mt-2';
+                memberCard.appendChild(suggestionsDiv);
+                container = suggestionsDiv;
+            }
+        }
     }
+    
+    if (!container) return;
     
     container.innerHTML = '';
     

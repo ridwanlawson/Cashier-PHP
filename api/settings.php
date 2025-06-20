@@ -1,4 +1,3 @@
-
 <?php
 // Start output buffering immediately and clean any existing output
 if (ob_get_level()) {

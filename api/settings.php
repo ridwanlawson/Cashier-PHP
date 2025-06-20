@@ -1,3 +1,4 @@
+php
 <?php
 session_start();
 require_once '../auth.php';
@@ -22,17 +23,18 @@ if ($method !== 'GET' && $user['role'] !== 'admin') {
 try {
     $database = new Database();
     $db = $database->getConnection();
-    
-    $method = $_SERVER['REQUEST_METHOD'];
-    
-    switch($method) {
-        case 'GET':
+
+    if (!$db) {
+        throw new Exception('Database connection failed');
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             // Get current settings
             $query = "SELECT * FROM app_settings LIMIT 1";
             $stmt = $db->prepare($query);
             $stmt->execute();
             $settings = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+
             if (!$settings) {
                 // Return default settings if none exist
                 $settings = [
@@ -51,40 +53,40 @@ try {
                     'tax_rate' => 0
                 ];
             }
-            
+
             echo json_encode($settings);
             break;
-            
+
         case 'POST':
             $input = file_get_contents("php://input");
-            
+
             if (empty($input)) {
                 http_response_code(400);
                 echo json_encode(['success' => false, 'error' => 'No input data received']);
                 exit;
             }
-            
+
             $data = json_decode($input, true);
-            
+
             if (json_last_error() !== JSON_ERROR_NONE) {
                 http_response_code(400);
                 echo json_encode(['success' => false, 'error' => 'Invalid JSON data: ' . json_last_error_msg()]);
                 exit;
             }
-            
+
             if (!$data) {
                 http_response_code(400);
                 echo json_encode(['success' => false, 'error' => 'Empty JSON data']);
                 exit;
             }
-            
+
             // Validate required fields
             if (empty($data['app_name']) || empty($data['store_name']) || empty($data['receipt_footer'])) {
                 http_response_code(400);
                 echo json_encode(['success' => false, 'error' => 'Required fields are missing: app_name, store_name, receipt_footer']);
                 exit;
             }
-            
+
             // Sanitize data
             $cleanData = [
                 'app_name' => trim($data['app_name']),
@@ -101,13 +103,13 @@ try {
                 'tax_enabled' => isset($data['tax_enabled']) ? (int)(bool)$data['tax_enabled'] : 0,
                 'tax_rate' => floatval($data['tax_rate'] ?? 0)
             ];
-            
+
             // Check if settings exist
             $query = "SELECT id FROM app_settings LIMIT 1";
             $stmt = $db->prepare($query);
             $stmt->execute();
             $exists = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+
             if ($exists) {
                 // Update existing settings
                 $query = "UPDATE app_settings SET 
@@ -136,7 +138,7 @@ try {
                     $cleanData['tax_enabled'], $cleanData['tax_rate']
                 ]);
             }
-            
+
             if ($result) {
                 echo json_encode(['success' => true, 'message' => 'Settings saved successfully']);
             } else {
@@ -145,12 +147,12 @@ try {
                 echo json_encode(['success' => false, 'error' => 'Database error: ' . $errorInfo[2]]);
             }
             break;
-            
+
         default:
             http_response_code(405);
             echo json_encode(['success' => false, 'error' => 'Method not allowed']);
     }
-    
+
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);

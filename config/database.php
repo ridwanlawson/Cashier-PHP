@@ -10,6 +10,13 @@ class Database {
         try {
             // Use SQLite for Replit compatibility
             $db_path = __DIR__ . '/../api/kasir_digital.db';
+            
+            // Ensure directory exists
+            $db_dir = dirname($db_path);
+            if (!is_dir($db_dir)) {
+                mkdir($db_dir, 0755, true);
+            }
+            
             $this->conn = new PDO("sqlite:" . $db_path);
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
@@ -17,13 +24,18 @@ class Database {
             $this->createTables();
 
         } catch(PDOException $exception) {
-            echo "Connection error: " . $exception->getMessage();
+            error_log("Database connection error: " . $exception->getMessage());
+            return null;
         }
 
         return $this->conn;
     }
 
     private function createTables() {
+        if (!$this->conn) {
+            return false;
+        }
+        
         $queries = [
             "CREATE TABLE IF NOT EXISTS products (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -113,8 +125,18 @@ class Database {
         ];
 
         foreach($queries as $query) {
-            $this->conn->exec($query);
+            try {
+                $this->conn->exec($query);
+            } catch(PDOException $e) {
+                // Ignore "column already exists" errors for ALTER TABLE statements
+                if (strpos($query, 'ALTER TABLE') === 0 && strpos($e->getMessage(), 'duplicate column name') !== false) {
+                    continue;
+                }
+                error_log("Table creation error: " . $e->getMessage() . " Query: " . $query);
+            }
         }
+        
+        return true;
     }
 }
 ?>

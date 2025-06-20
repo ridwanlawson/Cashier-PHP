@@ -23,14 +23,22 @@ async function apiRequest(url, options = {}) {
             throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
         }
 
-        const result = await response.json();
-        return result;
+        const responseText = await response.text();
+        
+        if (!responseText) {
+            throw new Error('Empty response from server');
+        }
+
+        try {
+            const result = JSON.parse(responseText);
+            return result;
+        } catch (parseError) {
+            console.error('Failed to parse JSON response:', responseText);
+            console.error('Parse error:', parseError);
+            throw new Error('Invalid JSON response from server');
+        }
     } catch (error) {
         console.error('API request failed:', error);
-        if (error.name === 'SyntaxError') {
-            console.error('Invalid JSON response from server');
-            throw new Error('Invalid server response');
-        }
         throw error;
     }
 }
@@ -1691,11 +1699,12 @@ function clearMember() {
 
 // Payment method functions
 function updatePaymentMethod() {
-    const paymentMethod = document.getElementById('payment-method').value;
-    console.log('Payment method changed to:', paymentMethod);
-    
-    // You can add specific logic for different payment methods here
-    // For example, show/hide certain fields based on payment method
+    const paymentMethod = document.getElementById('payment-method');
+    if (paymentMethod) {
+        console.log('Payment method changed to:', paymentMethod.value);
+        // You can add specific logic for different payment methods here
+        // For example, show/hide certain fields based on payment method
+    }
 }
 
 // Held transactions functions

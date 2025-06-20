@@ -1,14 +1,17 @@
 <?php
-require_once '../config/database.php';
-require_once '../auth.php';
-
-// Clean any output buffers and start fresh
-if (ob_get_level()) {
+// Clean any output buffers and start fresh BEFORE any output
+while (ob_get_level()) {
     ob_end_clean();
 }
 ob_start();
 
-session_start();
+require_once '../config/database.php';
+require_once '../auth.php';
+
+// Start session only if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 header('Content-Type: application/json');
 
 $auth = new Auth();
@@ -102,10 +105,19 @@ try {
 
         case 'POST':
             $input = file_get_contents("php://input");
+            
+            if (empty($input)) {
+                throw new Exception('No input data received');
+            }
+            
             $data = json_decode($input, true);
-
+            
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new Exception('Invalid JSON data: ' . json_last_error_msg());
+            }
+            
             if (!$data) {
-                throw new Exception('Invalid JSON data');
+                throw new Exception('No data provided');
             }
 
             // Update settings
@@ -147,9 +159,14 @@ try {
             ]);
 
             if ($result) {
-                ob_clean();
+                // Ensure clean output
+                if (ob_get_level()) {
+                    ob_clean();
+                }
                 echo json_encode(['success' => true, 'message' => 'Settings saved successfully']);
-                ob_end_flush();
+                if (ob_get_level()) {
+                    ob_end_flush();
+                }
             } else {
                 throw new Exception('Failed to save settings');
             }

@@ -1,14 +1,17 @@
 <?php
-require_once '../config/database.php';
-require_once '../auth.php';
-
-// Clean any output buffers and start fresh
-if (ob_get_level()) {
+// Clean any output buffers and start fresh BEFORE any output
+while (ob_get_level()) {
     ob_end_clean();
 }
 ob_start();
 
-session_start();
+require_once '../config/database.php';
+require_once '../auth.php';
+
+// Start session only if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 header('Content-Type: application/json');
 
 $auth = new Auth();
@@ -77,14 +80,22 @@ try {
     ];
 
     // Clean output buffer and send JSON
-    ob_clean();
+    if (ob_get_level()) {
+        ob_clean();
+    }
     echo json_encode($stats);
-    ob_end_flush();
+    if (ob_get_level()) {
+        ob_end_flush();
+    }
 
 } catch (Exception $e) {
-    ob_clean();
+    if (ob_get_level()) {
+        ob_clean();
+    }
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-    ob_end_flush();
+    if (ob_get_level()) {
+        ob_end_flush();
+    }
 }
 ?>

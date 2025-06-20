@@ -7,8 +7,6 @@ let selectedMember = null;
 let appSettings = {};
 let transactions = [];
 let inventory = [];
-let heldTransactions = [];
-
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Page loaded, initializing...');
@@ -2013,8 +2011,13 @@ async function deleteHeldTransaction(transactionId, showMessage = true) {
 
 // Load held transactions on initialization
 async function loadHeldTransactions() {
-    // This function is called during initialization but doesn't need to display anything
-    // It's just here to maintain consistency with other load functions
+    try {
+        const response = await apiRequest('api/held-transactions.php');
+        heldTransactions = response || [];
+    } catch (error) {
+        console.error('Error loading held transactions:', error);
+        heldTransactions = [];
+    }
 }
 
 // Members functions

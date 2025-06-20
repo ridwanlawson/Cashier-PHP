@@ -1,5 +1,12 @@
 <?php
 class Auth {
+    public function __construct() {
+        // Only start session if not already started and headers not sent
+        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+            session_start();
+        }
+    }
+
     public function login($username, $password) {
         try {
             // Basic input validation

@@ -840,9 +840,55 @@ $user = $auth->getUser();
                             </div>
                         </div>
                         <div class="col-lg-4 col-md-12">
+                            <!-- Member Selection -->
+                            <div class="card mb-3 glow">
+                                <div class="card-header">
+                                    <h6><i class="fas fa-user"></i> Member</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="input-group mb-2">
+                                        <input type="text" class="form-control form-control-sm" id="member-search" placeholder="Cari member...">
+                                        <button class="btn btn-outline-primary btn-sm" onclick="clearMember()">Clear</button>
+                                    </div>
+                                    <div id="selected-member" class="text-info small"></div>
+                                </div>
+                            </div>
+
+                            <!-- Payment Method -->
+                            <div class="card mb-3 glow">
+                                <div class="card-header">
+                                    <h6><i class="fas fa-credit-card"></i> Metode Pembayaran</h6>
+                                </div>
+                                <div class="card-body">
+                                    <select class="form-select form-select-sm" id="payment-method" onchange="updatePaymentMethod()">
+                                        <option value="cash">Tunai</option>
+                                        <option value="card">Kartu</option>
+                                        <option value="transfer">Transfer</option>
+                                        <option value="qr">QR Code</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Hold/Resume -->
+                            <div class="card mb-3 glow">
+                                <div class="card-header">
+                                    <h6><i class="fas fa-pause"></i> Transaksi Tertunda</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-grid gap-2">
+                                        <button class="btn btn-warning btn-sm" onclick="holdTransaction()">
+                                            <i class="fas fa-pause"></i> Tahan Transaksi
+                                        </button>
+                                        <button class="btn btn-info btn-sm" onclick="showHeldTransactions()">
+                                            <i class="fas fa-list"></i> Lihat Tertunda
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="card glow">
                                 <div class="card-header">
-                                    <h5><i class="fas fa-shopping-bag"></i> Keranjang Belanja</h5>
+                                    <h5><i class="fas fa-shopping-cart"></i> Keranjang</h5>
                                 </div>
                                 <div class="card-body">
                                     <div id="cart-items"></div>                                    <hr>

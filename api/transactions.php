@@ -109,10 +109,13 @@ try {
                 // Get transaction detail
                 $id = (int)$_GET['id'];
 
-                $query = "SELECT t.*, ti.product_id, ti.quantity, ti.price, ti.subtotal, p.name as product_name 
+                $query = "SELECT t.*, ti.product_id, ti.quantity, ti.price, ti.discount, ti.subtotal, p.name as product_name,
+                         u.name as cashier_name, m.name as member_name, m.points as member_points
                          FROM transactions t 
                          LEFT JOIN transaction_items ti ON t.id = ti.transaction_id 
                          LEFT JOIN products p ON ti.product_id = p.id 
+                         LEFT JOIN users u ON t.cashier_id = u.id
+                         LEFT JOIN members m ON t.member_id = m.id
                          WHERE t.id = ?";
                 $stmt = $db->prepare($query);
                 $stmt->execute([$id]);
@@ -123,6 +126,10 @@ try {
                         'id' => (int)$results[0]['id'],
                         'transaction_date' => $results[0]['transaction_date'],
                         'total' => (float)$results[0]['total'],
+                        'payment_method' => $results[0]['payment_method'],
+                        'cashier_name' => $results[0]['cashier_name'],
+                        'member_name' => $results[0]['member_name'],
+                        'member_points' => $results[0]['member_points'] ? (int)$results[0]['member_points'] : null,
                         'items' => []
                     ];
 
@@ -132,6 +139,7 @@ try {
                                 'product_name' => $row['product_name'],
                                 'quantity' => (int)$row['quantity'],
                                 'price' => (float)$row['price'],
+                                'discount' => (float)$row['discount'],
                                 'subtotal' => (float)$row['subtotal']
                             ];
                         }
@@ -189,9 +197,13 @@ try {
                 $items = $data['items'];
 
                 // Insert transaction
-                $query = "INSERT INTO transactions (subtotal, tax_amount, total, transaction_date) VALUES (?, ?, ?, datetime('now'))";
+                $cashierId = $data['cashier_id'] ?? null;
+                $memberId = $data['member_id'] ?? null;
+                $paymentMethod = $data['payment_method'] ?? 'cash';
+                
+                $query = "INSERT INTO transactions (subtotal, tax_amount, total, cashier_id, member_id, payment_method, transaction_date) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))";
                 $stmt = $db->prepare($query);
-                $stmt->execute([$subtotal, $taxAmount, $total]);
+                $stmt->execute([$subtotal, $taxAmount, $total, $cashierId, $memberId, $paymentMethod]);
 
                 $transaction_id = $db->lastInsertId();
 
@@ -216,14 +228,16 @@ try {
                     }
 
                     // Insert transaction item
-                    $query = "INSERT INTO transaction_items (transaction_id, product_id, quantity, price, subtotal) 
-                             VALUES (?, ?, ?, ?, ?)";
+                    $discount = isset($item['discount']) ? (float)$item['discount'] : 0;
+                    $query = "INSERT INTO transaction_items (transaction_id, product_id, quantity, price, discount, subtotal) 
+                             VALUES (?, ?, ?, ?, ?, ?)";
                     $stmt = $db->prepare($query);
                     $stmt->execute([
                         $transaction_id,
                         (int)$item['product_id'],
                         (int)$item['quantity'],
                         (float)$item['price'],
+                        $discount,
                         (float)$item['subtotal']
                     ]);
 

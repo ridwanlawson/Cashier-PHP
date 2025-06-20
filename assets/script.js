@@ -169,8 +169,9 @@ function showPage(pageId, linkElement) {
     // Load page specific data
     switch(pageId) {
         case 'products':
+            // Force reload products when visiting products page
+            console.log('Switching to products page, loading products...');
             loadProducts();
-            displayProducts();
             break;
         case 'cashier':
             loadProducts();
@@ -527,35 +528,50 @@ async function loadLowStockProducts() {
 // Product functions
 async function loadProducts() {
     try {
+        console.log('Loading products...');
         const response = await apiRequest('api/products.php');
-        products = response || [];
-        displayProducts();
-        populateStockProductSelect();
+        
+        if (response && Array.isArray(response)) {
+            products = response;
+            console.log('Products loaded successfully:', products.length, 'items');
+            displayProducts();
+            populateStockProductSelect();
+        } else {
+            console.warn('Invalid products response:', response);
+            products = [];
+            displayProducts();
+        }
     } catch (error) {
         console.error('Error loading products:', error);
-        // Only show error if we're on products page and products failed to load
+        products = [];
+        
+        // Only show error if we're actively on products page
         const productsPage = document.getElementById('products');
-        if (productsPage && !productsPage.classList.contains('d-none') && (!products || products.length === 0)) {
-            showAlert('Gagal memuat data produk', 'danger');
+        if (productsPage && !productsPage.classList.contains('d-none')) {
+            showAlert('Gagal memuat data produk: ' + (error.message || 'Unknown error'), 'danger');
         }
+        
+        // Still try to display empty table
+        displayProducts();
     }
 }
 
 function displayProducts(productsToShow = products) {
     const tbody = document.getElementById('products-tbody');
+    const table = $('#products-table');
+    
     if (!tbody) return;
 
     // Properly destroy existing DataTable if it exists
-    const table = $('#products-table');
     if ($.fn.DataTable.isDataTable(table)) {
         try {
-            table.DataTable().destroy();
-            table.empty();
+            table.DataTable().clear().destroy();
         } catch (e) {
             console.log('DataTable destroy error:', e);
         }
     }
 
+    // Clear table content
     tbody.innerHTML = '';
 
     if (!Array.isArray(products) || products.length === 0) {
@@ -563,14 +579,15 @@ function displayProducts(productsToShow = products) {
         return;
     }
 
+    // Add products to table
     products.forEach(product => {
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${product.barcode}</td>
-            <td>${product.name}</td>
-            <td class="d-none d-md-table-cell">${product.category}</td>
-            <td>${appSettings.currency || 'Rp'} ${formatNumber(product.price)}</td>
-            <td>${product.stock}</td>
+            <td>${product.barcode || '-'}</td>
+            <td>${product.name || '-'}</td>
+            <td class="d-none d-md-table-cell">${product.category || '-'}</td>
+            <td>${appSettings.currency || 'Rp'} ${formatNumber(product.price || 0)}</td>
+            <td>${product.stock || 0}</td>
             <td>
                 <button class="btn btn-warning btn-sm me-1" onclick="editProduct(${product.id})">
                     <i class="fas fa-edit"></i>
@@ -583,26 +600,31 @@ function displayProducts(productsToShow = products) {
         tbody.appendChild(row);
     });
 
-    // Initialize DataTable with delay and proper error handling
+    // Initialize DataTable with proper error handling and delay
     setTimeout(() => {
         try {
-            table.DataTable({
-                language: {
-                    url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
-                },
-                dom: 'Bfrtip',
-                buttons: [
-                    'copy', 'csv', 'excel', 'pdf', 'print'
-                ],
-                pageLength: 25,
-                responsive: true,
-                destroy: true,
-                retrieve: true
-            });
+            if (!$.fn.DataTable.isDataTable(table)) {
+                table.DataTable({
+                    language: {
+                        url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
+                    },
+                    dom: 'Bfrtip',
+                    buttons: [
+                        'copy', 'csv', 'excel', 'pdf', 'print'
+                    ],
+                    pageLength: 25,
+                    responsive: true,
+                    destroy: true,
+                    retrieve: false,
+                    ordering: true,
+                    searching: true,
+                    paging: true
+                });
+            }
         } catch (e) {
             console.log('DataTable initialization error:', e);
         }
-    }, 200);
+    }, 300);
 }
 
 function showAddProductModal() {

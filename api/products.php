@@ -28,15 +28,21 @@ try {
                 $stmt = $db->prepare($query);
                 $stmt->execute([$id]);
                 $product = $stmt->fetch(PDO::FETCH_ASSOC);
-                
+
                 if ($product) {
                     $product['id'] = (int)$product['id'];
                     $product['price'] = (float)$product['price'];
                     $product['stock'] = (int)$product['stock'];
                 }
-                
-                ob_clean();
+
+                // Clean output buffer and send JSON
+                if (ob_get_level()) {
+                    ob_clean();
+                }
                 echo json_encode($product ? $product : null);
+                if (ob_get_level()) {
+                    ob_end_flush();
+                }
             } elseif(isset($_GET['lowstock'])) {
                 // Get low stock products
                 $limit = (int)$_GET['lowstock'];
@@ -44,16 +50,22 @@ try {
                 $stmt = $db->prepare($query);
                 $stmt->execute([$limit]);
                 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
+
                 // Convert numeric fields
                 foreach($products as &$product) {
                     $product['id'] = (int)$product['id'];
                     $product['price'] = (float)$product['price'];
                     $product['stock'] = (int)$product['stock'];
                 }
-                
-                ob_clean();
+
+                // Clean output buffer and send JSON
+                if (ob_get_level()) {
+                    ob_clean();
+                }
                 echo json_encode($products);
+                if (ob_get_level()) {
+                    ob_end_flush();
+                }
             } elseif(isset($_GET['search'])) {
                 // Search products
                 $search = '%' . $_GET['search'] . '%';
@@ -61,16 +73,22 @@ try {
                 $stmt = $db->prepare($query);
                 $stmt->execute([$search, $search, $search]);
                 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
+
                 // Convert numeric fields
                 foreach($products as &$product) {
                     $product['id'] = (int)$product['id'];
                     $product['price'] = (float)$product['price'];
                     $product['stock'] = (int)$product['stock'];
                 }
-                
-                ob_clean();
+
+                // Clean output buffer and send JSON
+                if (ob_get_level()) {
+                    ob_clean();
+                }
                 echo json_encode($products);
+                if (ob_get_level()) {
+                    ob_end_flush();
+                }
             } elseif(isset($_GET['barcode'])) {
                 // Search by barcode
                 $barcode = $_GET['barcode'];
@@ -78,45 +96,57 @@ try {
                 $stmt = $db->prepare($query);
                 $stmt->execute([$barcode]);
                 $product = $stmt->fetch(PDO::FETCH_ASSOC);
-                
+
                 if ($product) {
                     $product['id'] = (int)$product['id'];
                     $product['price'] = (float)$product['price'];
                     $product['stock'] = (int)$product['stock'];
                 }
-                
-                ob_clean();
+
+                // Clean output buffer and send JSON
+                if (ob_get_level()) {
+                    ob_clean();
+                }
                 echo json_encode($product ? $product : null);
+                if (ob_get_level()) {
+                    ob_end_flush();
+                }
             } else {
                 // Get all products
                 $query = "SELECT * FROM products ORDER BY name";
                 $stmt = $db->prepare($query);
                 $stmt->execute();
                 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
+
                 // Convert numeric fields
                 foreach($products as &$product) {
                     $product['id'] = (int)$product['id'];
                     $product['price'] = (float)$product['price'];
                     $product['stock'] = (int)$product['stock'];
                 }
-                
-                ob_clean();
+
+                // Clean output buffer and send JSON
+                if (ob_get_level()) {
+                    ob_clean();
+                }
                 echo json_encode($products);
+                if (ob_get_level()) {
+                    ob_end_flush();
+                }
             }
             break;
-            
+
         case 'POST':
             $input = file_get_contents("php://input");
             if (!$input) {
                 throw new Exception('No input data received');
             }
-            
+
             $data = json_decode($input, true);
             if (json_last_error() !== JSON_ERROR_NONE) {
                 throw new Exception('Invalid JSON data: ' . json_last_error_msg());
             }
-            
+
             // Validate required fields
             $required = ['name', 'category', 'price', 'stock', 'barcode'];
             foreach ($required as $field) {
@@ -124,7 +154,7 @@ try {
                     throw new Exception("Field '$field' is required");
                 }
             }
-            
+
             // Check for duplicate barcode
             $query = "SELECT id FROM products WHERE barcode = ?";
             $stmt = $db->prepare($query);
@@ -132,10 +162,10 @@ try {
             if ($stmt->fetch()) {
                 throw new Exception('Barcode already exists');
             }
-            
+
             $query = "INSERT INTO products (name, category, price, stock, barcode) VALUES (?, ?, ?, ?, ?)";
             $stmt = $db->prepare($query);
-            
+
             $result = $stmt->execute([
                 trim($data['name']),
                 trim($data['category']),
@@ -143,7 +173,7 @@ try {
                 (int)$data['stock'],
                 trim($data['barcode'])
             ]);
-            
+
             ob_clean();
             if($result) {
                 echo json_encode(['success' => true, 'message' => 'Product added successfully']);
@@ -151,18 +181,18 @@ try {
                 echo json_encode(['success' => false, 'error' => 'Failed to add product']);
             }
             break;
-            
+
         case 'PUT':
             $input = file_get_contents("php://input");
             if (!$input) {
                 throw new Exception('No input data received');
             }
-            
+
             $data = json_decode($input, true);
             if (json_last_error() !== JSON_ERROR_NONE) {
                 throw new Exception('Invalid JSON data: ' . json_last_error_msg());
             }
-            
+
             // Validate required fields
             $required = ['id', 'name', 'category', 'price', 'stock', 'barcode'];
             foreach ($required as $field) {
@@ -170,7 +200,7 @@ try {
                     throw new Exception("Field '$field' is required");
                 }
             }
-            
+
             // Check for duplicate barcode (excluding current product)
             $query = "SELECT id FROM products WHERE barcode = ? AND id != ?";
             $stmt = $db->prepare($query);
@@ -178,10 +208,10 @@ try {
             if ($stmt->fetch()) {
                 throw new Exception('Barcode already exists');
             }
-            
+
             $query = "UPDATE products SET name = ?, category = ?, price = ?, stock = ?, barcode = ? WHERE id = ?";
             $stmt = $db->prepare($query);
-            
+
             $result = $stmt->execute([
                 trim($data['name']),
                 trim($data['category']),
@@ -190,7 +220,7 @@ try {
                 trim($data['barcode']),
                 (int)$data['id']
             ]);
-            
+
             ob_clean();
             if($result) {
                 echo json_encode(['success' => true, 'message' => 'Product updated successfully']);
@@ -198,28 +228,28 @@ try {
                 echo json_encode(['success' => false, 'error' => 'Failed to update product']);
             }
             break;
-            
+
         case 'DELETE':
             if (!isset($_GET['id'])) {
                 throw new Exception('Product ID is required');
             }
-            
+
             $id = (int)$_GET['id'];
-            
+
             // Check if product exists in any transactions
             $query = "SELECT COUNT(*) as count FROM transaction_items WHERE product_id = ?";
             $stmt = $db->prepare($query);
             $stmt->execute([$id]);
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+
             if ($result['count'] > 0) {
                 throw new Exception('Cannot delete product that has transaction history');
             }
-            
+
             $query = "DELETE FROM products WHERE id = ?";
             $stmt = $db->prepare($query);
             $result = $stmt->execute([$id]);
-            
+
             ob_clean();
             if($result) {
                 echo json_encode(['success' => true, 'message' => 'Product deleted successfully']);
@@ -227,7 +257,7 @@ try {
                 echo json_encode(['success' => false, 'error' => 'Failed to delete product']);
             }
             break;
-            
+
         default:
             ob_clean();
             echo json_encode(['success' => false, 'error' => 'Method not allowed']);

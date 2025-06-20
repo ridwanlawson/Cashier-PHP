@@ -1,3 +1,4 @@
+
 // Global variables
 let cart = [];
 let products = [];
@@ -360,7 +361,14 @@ async function saveSettings() {
             body: JSON.stringify(formData)
         });
 
-        const result = await response.json();
+        const text = await response.text();
+        let result;
+        try {
+            result = JSON.parse(text);
+        } catch (e) {
+            console.error('Invalid JSON response:', text);
+            throw new Error('Server returned invalid response');
+        }
 
         if (result.success) {
             showAlert('Pengaturan berhasil disimpan!', 'success');
@@ -982,7 +990,7 @@ function showReceipt(transactionId, cartItems, total, payment) {
     };
 
     let receiptHTML = `
-        <div class="text-center mb-3">
+        <div class="text-center mb-3" style="color: var(--text-primary) !important;">
             ${appSettings.receipt_header ? `<div><small>${appSettings.receipt_header}</small></div>` : ''}
             <h6>${appSettings.store_name || 'Toko ABC'}</h6>
             ${appSettings.store_address ? `<small>${appSettings.store_address}</small><br>` : ''}
@@ -991,21 +999,21 @@ function showReceipt(transactionId, cartItems, total, payment) {
             ${appSettings.store_website ? `<small>Web: ${appSettings.store_website}</small><br>` : ''}
             ${appSettings.store_social_media ? `<small>Social: ${appSettings.store_social_media}</small><br>` : ''}
         </div>
-        <div class="border-top border-bottom py-2 mb-2">
+        <div class="border-top border-bottom py-2 mb-2" style="color: var(--text-primary) !important;">
             <div class="row">
                 <div class="col-6"><strong>Transaksi #${transactionId}</strong></div>
                 <div class="col-6 text-end"><small>${new Date().toLocaleString('id-ID')}</small></div>
             </div>
         </div>
-        <table class="table table-sm">
+        <table class="table table-sm" style="color: var(--text-primary) !important;">
     `;
 
     cartItems.forEach(item => {
         receiptHTML += `
-            <tr>
-                <td>${item.name}</td>
-                <td class="text-end">${item.quantity} x ${formatNumber(item.price)}</td>
-                <td class="text-end">${formatNumber(item.subtotal)}</td>
+            <tr style="color: var(--text-primary) !important;">
+                <td style="color: var(--text-primary) !important;">${item.name}</td>
+                <td class="text-end" style="color: var(--text-primary) !important;">${item.quantity} x ${formatNumber(item.price)}</td>
+                <td class="text-end" style="color: var(--text-primary) !important;">${formatNumber(item.subtotal)}</td>
             </tr>
         `;
     });
@@ -1017,10 +1025,10 @@ function showReceipt(transactionId, cartItems, total, payment) {
 
     receiptHTML += `
         </table>
-        <div class="border-top pt-2">
+        <div class="border-top pt-2" style="color: var(--text-primary) !important;">
             <div class="row">
-                <div class="col-6">Subtotal:</div>
-                <div class="col-6 text-end">${appSettings.currency || 'Rp'} ${formatNumber(subtotal)}</div>
+                <div class="col-6" style="color: var(--text-primary) !important;">Subtotal:</div>
+                <div class="col-6 text-end" style="color: var(--text-primary) !important;">${appSettings.currency || 'Rp'} ${formatNumber(subtotal)}</div>
             </div>
     `;
 
@@ -1028,27 +1036,27 @@ function showReceipt(transactionId, cartItems, total, payment) {
     if (taxEnabled && taxRate > 0 && taxAmount > 0) {
         receiptHTML += `
             <div class="row">
-                <div class="col-6">Pajak (${taxRate}%):</div>
-                <div class="col-6 text-end">${appSettings.currency || 'Rp'} ${formatNumber(taxAmount)}</div>
+                <div class="col-6" style="color: var(--text-primary) !important;">Pajak (${taxRate}%):</div>
+                <div class="col-6 text-end" style="color: var(--text-primary) !important;">${appSettings.currency || 'Rp'} ${formatNumber(taxAmount)}</div>
             </div>
         `;
     }
 
     receiptHTML += `
         <div class="row">
-            <div class="col-6"><strong>Total:</strong></div>
-            <div class="col-6 text-end"><strong>${appSettings.currency || 'Rp'} ${formatNumber(total)}</strong></div>
+            <div class="col-6" style="color: var(--text-primary) !important;"><strong>Total:</strong></div>
+            <div class="col-6 text-end" style="color: var(--text-primary) !important;"><strong>${appSettings.currency || 'Rp'} ${formatNumber(total)}</strong></div>
         </div>
         <div class="row">
-            <div class="col-6">Bayar:</div>
-            <div class="col-6 text-end">${appSettings.currency || 'Rp'} ${formatNumber(payment)}</div>
+            <div class="col-6" style="color: var(--text-primary) !important;">Bayar:</div>
+            <div class="col-6 text-end" style="color: var(--text-primary) !important;">${appSettings.currency || 'Rp'} ${formatNumber(payment)}</div>
         </div>
         <div class="row">
-            <div class="col-6">Kembalian:</div>
-            <div class="col-6 text-end">${appSettings.currency || 'Rp'} ${formatNumber(change)}</div>
+            <div class="col-6" style="color: var(--text-primary) !important;">Kembalian:</div>
+            <div class="col-6 text-end" style="color: var(--text-primary) !important;">${appSettings.currency || 'Rp'} ${formatNumber(change)}</div>
         </div>
     </div>
-    <div class="text-center mt-3">
+    <div class="text-center mt-3" style="color: var(--text-primary) !important;">
         <small>${appSettings.receipt_footer || 'Terima kasih atas kunjungan Anda'}</small>
     </div>
     `;
@@ -1138,17 +1146,17 @@ async function viewTransactionDetail(transactionId) {
         }
 
         let tableHTML = `
-            <div class="mb-3">
+            <div class="mb-3" style="color: var(--text-primary) !important;">
                 <h6>Transaksi #${transaction.id}</h6>
                 <p class="text-muted">${new Date(transaction.transaction_date).toLocaleString('id-ID')}</p>
             </div>
-            <table class="table table-dark">
+            <table class="table" style="color: var(--text-primary) !important;">
                 <thead>
-                    <tr>
-                        <th>Produk</th>
-                        <th>Qty</th>
-                        <th>Harga</th>
-                        <th>Subtotal</th>
+                    <tr style="color: var(--text-primary) !important;">
+                        <th style="color: var(--text-primary) !important;">Produk</th>
+                        <th style="color: var(--text-primary) !important;">Qty</th>
+                        <th style="color: var(--text-primary) !important;">Harga</th>
+                        <th style="color: var(--text-primary) !important;">Subtotal</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1156,11 +1164,11 @@ async function viewTransactionDetail(transactionId) {
 
         transaction.items.forEach(item => {
             tableHTML += `
-                <tr>
-                    <td>${item.product_name}</td>
-                    <td>${item.quantity}</td>
-                    <td>${appSettings.currency || 'Rp'} ${formatNumber(item.price)}</td>
-                    <td>${appSettings.currency || 'Rp'} ${formatNumber(item.subtotal)}</td>
+                <tr style="color: var(--text-primary) !important;">
+                    <td style="color: var(--text-primary) !important;">${item.product_name}</td>
+                    <td style="color: var(--text-primary) !important;">${item.quantity}</td>
+                    <td style="color: var(--text-primary) !important;">${appSettings.currency || 'Rp'} ${formatNumber(item.price)}</td>
+                    <td style="color: var(--text-primary) !important;">${appSettings.currency || 'Rp'} ${formatNumber(item.subtotal)}</td>
                 </tr>
             `;
         });
@@ -1168,10 +1176,10 @@ async function viewTransactionDetail(transactionId) {
         tableHTML += `
                 </tbody>
             </table>
-            <div class="border-top pt-2">
+            <div class="border-top pt-2" style="color: var(--text-primary) !important;">
                 <div class="row">
-                    <div class="col-6"><strong>Total:</strong></div>
-                    <div class="col-6 text-end"><strong>${appSettings.currency || 'Rp'} ${formatNumber(transaction.total)}</strong></div>
+                    <div class="col-6" style="color: var(--text-primary) !important;"><strong>Total:</strong></div>
+                    <div class="col-6 text-end" style="color: var(--text-primary) !important;"><strong>${appSettings.currency || 'Rp'} ${formatNumber(transaction.total)}</strong></div>
                 </div>
             </div>
         `;
@@ -1840,7 +1848,10 @@ async function saveHeldTransaction(transactionData) {
     try {
         const result = await apiRequest('api/held-transactions.php', {
             method: 'POST',
-            body: JSON.stringify(transactionData)
+            body: JSON.stringify({
+                cart: transactionData.cart_data,
+                note: transactionData.note
+            })
         });
 
         if (result.success) {

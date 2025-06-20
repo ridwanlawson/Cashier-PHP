@@ -1,3 +1,4 @@
+
 <?php
 session_start();
 require_once '../auth.php';
@@ -29,6 +30,27 @@ try {
 
     switch($_SERVER['REQUEST_METHOD']) {
         case 'GET':
+            // Create app_settings table if it doesn't exist
+            $createTableQuery = "CREATE TABLE IF NOT EXISTS app_settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                app_name TEXT DEFAULT 'Kasir Digital',
+                store_name TEXT DEFAULT 'Toko ABC',
+                store_address TEXT DEFAULT '',
+                store_phone TEXT DEFAULT '',
+                store_email TEXT DEFAULT '',
+                store_website TEXT DEFAULT '',
+                store_social_media TEXT DEFAULT '',
+                receipt_footer TEXT DEFAULT 'Terima kasih atas kunjungan Anda',
+                receipt_header TEXT DEFAULT '',
+                currency TEXT DEFAULT 'Rp',
+                logo_url TEXT DEFAULT '',
+                tax_enabled INTEGER DEFAULT 0,
+                tax_rate REAL DEFAULT 0,
+                points_per_amount INTEGER DEFAULT 10000,
+                points_value INTEGER DEFAULT 1
+            )";
+            $db->exec($createTableQuery);
+
             // Get current settings
             $query = "SELECT * FROM app_settings LIMIT 1";
             $stmt = $db->prepare($query);
@@ -36,32 +58,36 @@ try {
             $settings = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$settings) {
-                // Return default settings if none exist
-                $settings = [
-                    'app_name' => 'Kasir Digital',
-                    'store_name' => 'Toko ABC',
-                    'store_address' => 'Jl. Contoh No. 123, Kota, Provinsi',
-                    'store_phone' => '021-12345678',
-                    'store_email' => 'info@tokoabc.com',
-                    'store_website' => 'www.tokoabc.com',
-                    'store_social_media' => '@tokoabc',
-                    'receipt_footer' => 'Terima kasih atas kunjungan Anda',
-                    'currency' => 'Rp',
-                    'logo_url' => '',
-                    'receipt_header' => '',
-                    'tax_enabled' => false,
-                    'tax_rate' => 0,
-                    'points_per_amount' => 10000,
-                    'points_value' => 1
-                ];
-            } else {
-                // Ensure points settings exist with defaults
-                if (!isset($settings['points_per_amount'])) {
-                    $settings['points_per_amount'] = 10000;
-                }
-                if (!isset($settings['points_value'])) {
-                    $settings['points_value'] = 1;
-                }
+                // Insert default settings if none exist
+                $insertQuery = "INSERT INTO app_settings 
+                    (app_name, store_name, store_address, store_phone, store_email, store_website, 
+                     store_social_media, receipt_footer, receipt_header, currency, logo_url, 
+                     tax_enabled, tax_rate, points_per_amount, points_value) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                
+                $stmt = $db->prepare($insertQuery);
+                $stmt->execute([
+                    'Kasir Digital',
+                    'Toko ABC',
+                    'Jl. Contoh No. 123, Kota, Provinsi',
+                    '021-12345678',
+                    'info@tokoabc.com',
+                    'www.tokoabc.com',
+                    '@tokoabc',
+                    'Terima kasih atas kunjungan Anda',
+                    '',
+                    'Rp',
+                    '',
+                    0,
+                    0,
+                    10000,
+                    1
+                ]);
+
+                // Get the newly inserted settings
+                $stmt = $db->prepare($query);
+                $stmt->execute();
+                $settings = $stmt->fetch(PDO::FETCH_ASSOC);
             }
 
             echo json_encode($settings);
@@ -75,43 +101,49 @@ try {
                 throw new Exception('Invalid JSON data');
             }
 
-            // Update or insert settings
-            $fields = [
-                'app_name', 'store_name', 'store_address', 'store_phone', 'store_email',
-                'store_website', 'store_social_media', 'receipt_footer', 'receipt_header',
-                'currency', 'logo_url', 'tax_enabled', 'tax_rate', 'points_per_amount', 'points_value'
-            ];
+            // Update settings
+            $updateQuery = "UPDATE app_settings SET 
+                app_name = ?,
+                store_name = ?,
+                store_address = ?,
+                store_phone = ?,
+                store_email = ?,
+                store_website = ?,
+                store_social_media = ?,
+                receipt_footer = ?,
+                receipt_header = ?,
+                currency = ?,
+                logo_url = ?,
+                tax_enabled = ?,
+                tax_rate = ?,
+                points_per_amount = ?,
+                points_value = ?
+                WHERE id = 1";
 
-            foreach ($fields as $field) {
-                if (isset($data[$field])) {
-                    $value = $data[$field];
+            $stmt = $db->prepare($updateQuery);
+            $result = $stmt->execute([
+                $data['app_name'] ?? 'Kasir Digital',
+                $data['store_name'] ?? 'Toko ABC',
+                $data['store_address'] ?? '',
+                $data['store_phone'] ?? '',
+                $data['store_email'] ?? '',
+                $data['store_website'] ?? '',
+                $data['store_social_media'] ?? '',
+                $data['receipt_footer'] ?? 'Terima kasih atas kunjungan Anda',
+                $data['receipt_header'] ?? '',
+                $data['currency'] ?? 'Rp',
+                $data['logo_url'] ?? '',
+                $data['tax_enabled'] ? 1 : 0,
+                $data['tax_rate'] ?? 0,
+                $data['points_per_amount'] ?? 10000,
+                $data['points_value'] ?? 1
+            ]);
 
-                    // Convert boolean values to integers for storage
-                    if ($field === 'tax_enabled') {
-                        $value = $value ? 1 : 0;
-                    }
-
-                    // Check if setting already exists
-                    $query = "SELECT id FROM settings WHERE setting_key = ?";
-                    $stmt = $db->prepare($query);
-                    $stmt->execute([$field]);
-                    $existing = $stmt->fetch();
-
-                    if ($existing) {
-                        // Update existing setting
-                        $query = "UPDATE settings SET setting_value = ? WHERE setting_key = ?";
-                        $stmt = $db->prepare($query);
-                        $stmt->execute([$value, $field]);
-                    } else {
-                        // Insert new setting
-                        $query = "INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)";
-                        $stmt = $db->prepare($query);
-                        $stmt->execute([$field, $value]);
-                    }
-                }
+            if ($result) {
+                echo json_encode(['success' => true, 'message' => 'Settings saved successfully']);
+            } else {
+                throw new Exception('Failed to save settings');
             }
-
-            echo json_encode(['success' => true, 'message' => 'Settings saved successfully']);
             break;
 
         default:

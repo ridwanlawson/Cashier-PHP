@@ -1,3 +1,4 @@
+
 <?php
 class Database {
     private $host = "localhost";
@@ -37,31 +38,55 @@ class Database {
         }
 
         $queries = [
+            // Users table
+            "CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                name TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'kasir',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            
+            // Products table
             "CREATE TABLE IF NOT EXISTS products (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 category TEXT NOT NULL,
                 price REAL NOT NULL,
-                stock INTEGER NOT NULL,
-                barcode TEXT UNIQUE NOT NULL
+                stock INTEGER NOT NULL DEFAULT 0,
+                barcode TEXT UNIQUE NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )",
+            
+            // Transactions table
             "CREATE TABLE IF NOT EXISTS transactions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 subtotal REAL NOT NULL DEFAULT 0,
                 tax_amount REAL NOT NULL DEFAULT 0,
                 total REAL NOT NULL,
-                transaction_date DATETIME DEFAULT CURRENT_TIMESTAMP
+                cashier_id INTEGER DEFAULT NULL,
+                member_id INTEGER DEFAULT NULL,
+                payment_method TEXT DEFAULT 'cash',
+                transaction_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (cashier_id) REFERENCES users(id),
+                FOREIGN KEY (member_id) REFERENCES members(id)
             )",
+            
+            // Transaction items table
             "CREATE TABLE IF NOT EXISTS transaction_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 transaction_id INTEGER NOT NULL,
                 product_id INTEGER NOT NULL,
                 quantity INTEGER NOT NULL,
                 price REAL NOT NULL,
+                discount REAL DEFAULT 0,
                 subtotal REAL NOT NULL,
                 FOREIGN KEY (transaction_id) REFERENCES transactions(id),
                 FOREIGN KEY (product_id) REFERENCES products(id)
             )",
+            
+            // Inventory log table
             "CREATE TABLE IF NOT EXISTS inventory_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 product_id INTEGER NOT NULL,
@@ -72,37 +97,8 @@ class Database {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (product_id) REFERENCES products(id)
             )",
-            "CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                name TEXT NOT NULL,
-                role TEXT NOT NULL DEFAULT 'kasir',
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )",
-            "INSERT OR IGNORE INTO users (username, password, name, role) VALUES 
-             ('admin', 'password', 'Administrator', 'admin'),
-            ('kasir', 'password', 'Kasir', 'kasir')",
-            "CREATE TABLE IF NOT EXISTS app_settings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                app_name TEXT DEFAULT 'Kasir Digital',
-                store_name TEXT DEFAULT 'Toko ABC',
-                store_address TEXT,
-                store_phone TEXT,
-                store_email TEXT,
-                store_website TEXT,
-                store_social_media TEXT,
-                receipt_footer TEXT DEFAULT 'Terima kasih',
-                receipt_header TEXT,
-                currency TEXT DEFAULT 'Rp',
-                logo_url TEXT,
-                tax_rate REAL DEFAULT 0,
-                tax_enabled INTEGER DEFAULT 0,
-                points_per_amount INTEGER DEFAULT 10000,
-                points_value INTEGER DEFAULT 1,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )",
+            
+            // Members table
             "CREATE TABLE IF NOT EXISTS members (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
@@ -110,30 +106,65 @@ class Database {
                 points INTEGER NOT NULL DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )",
+            
+            // Held transactions table
             "CREATE TABLE IF NOT EXISTS held_transactions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                items TEXT NOT NULL,
+                cart_data TEXT NOT NULL,
                 member TEXT,
                 payment_method TEXT DEFAULT 'cash',
-                held_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                note TEXT,
+                held_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )",
-            "ALTER TABLE held_transactions ADD COLUMN cart_data TEXT",
-            "ALTER TABLE held_transactions ADD COLUMN note TEXT",
-            "ALTER TABLE held_transactions ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP",
-            "ALTER TABLE transactions ADD COLUMN cashier_id INTEGER DEFAULT NULL",
-            "ALTER TABLE transactions ADD COLUMN member_id INTEGER DEFAULT NULL",
-            "ALTER TABLE transactions ADD COLUMN payment_method TEXT DEFAULT 'cash'",
-            "ALTER TABLE transaction_items ADD COLUMN discount REAL DEFAULT 0"
+            
+            // App settings table
+            "CREATE TABLE IF NOT EXISTS app_settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                app_name TEXT NOT NULL DEFAULT 'Kasir Digital',
+                store_name TEXT NOT NULL DEFAULT 'Toko ABC',
+                store_address TEXT DEFAULT '',
+                store_phone TEXT DEFAULT '',
+                store_email TEXT DEFAULT '',
+                store_website TEXT DEFAULT '',
+                store_social_media TEXT DEFAULT '',
+                receipt_header TEXT DEFAULT '',
+                receipt_footer TEXT NOT NULL DEFAULT 'Terima kasih atas kunjungan Anda',
+                currency TEXT DEFAULT 'Rp',
+                logo_url TEXT DEFAULT '',
+                tax_enabled INTEGER DEFAULT 0,
+                tax_rate REAL DEFAULT 0,
+                points_per_amount INTEGER DEFAULT 10000,
+                points_value INTEGER DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            
+            // Insert default admin user
+            "INSERT OR IGNORE INTO users (username, password, name, role) VALUES 
+             ('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrator', 'admin')",
+             
+            // Insert default kasir user
+            "INSERT OR IGNORE INTO users (username, password, name, role) VALUES 
+             ('kasir', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Kasir', 'kasir')",
+             
+            // Insert default app settings
+            "INSERT OR IGNORE INTO app_settings (
+                app_name, store_name, store_address, store_phone, store_email, 
+                store_website, store_social_media, receipt_header, receipt_footer, 
+                currency, logo_url, tax_enabled, tax_rate, points_per_amount, points_value
+            ) VALUES (
+                'Kasir Digital', 'Toko ABC', '', '', '', 
+                '', '', '', 'Terima kasih atas kunjungan Anda', 
+                'Rp', '', 0, 0, 10000, 1
+            )"
         ];
 
         foreach($queries as $query) {
             try {
                 $this->conn->exec($query);
             } catch(PDOException $e) {
-                // Ignore "column already exists" errors for ALTER TABLE statements
-                if (strpos($query, 'ALTER TABLE') === 0 && strpos($e->getMessage(), 'duplicate column name') !== false) {
-                    continue;
-                }
+                // Log error but continue with other queries
                 error_log("Table creation error: " . $e->getMessage() . " Query: " . $query);
             }
         }

@@ -1,28 +1,26 @@
 <?php
-// Start output buffering immediately and clean any existing output
+// Clean any existing output and start session properly
 if (ob_get_level()) {
     ob_end_clean();
 }
-ob_start();
 
-// Start session first, before any includes
+// Start session before any output
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Set headers before any output
+header('Content-Type: application/json');
+header('Cache-Control: no-cache, must-revalidate');
+
 require_once '../config/database.php';
 require_once '../auth.php';
-
-header('Content-Type: application/json');
 
 $auth = new Auth();
 $auth->requireLogin();
 
 $user = $auth->getUser();
 $method = $_SERVER['REQUEST_METHOD'];
-
-// For GET requests, allow all authenticated users to view settings
-// For POST requests, only admin can modify settings
 
 try {
     $database = new Database();
@@ -67,10 +65,7 @@ try {
                 $settings['points_value'] = (int)$settings['points_value'];
             }
 
-            // Clean output buffer and send JSON
-            ob_clean();
             echo json_encode($settings);
-            ob_end_flush();
             break;
 
         case 'POST':
@@ -94,29 +89,6 @@ try {
                 throw new Exception('App name, store name, and receipt footer are required');
             }
 
-            // Check if settings table exists, create if not
-            $createTable = "CREATE TABLE IF NOT EXISTS app_settings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                app_name TEXT NOT NULL,
-                store_name TEXT NOT NULL,
-                store_address TEXT,
-                store_phone TEXT,
-                store_email TEXT,
-                store_website TEXT,
-                store_social_media TEXT,
-                receipt_header TEXT,
-                receipt_footer TEXT NOT NULL,
-                currency TEXT DEFAULT 'Rp',
-                logo_url TEXT,
-                tax_enabled BOOLEAN DEFAULT 0,
-                tax_rate DECIMAL(5,2) DEFAULT 0,
-                points_per_amount INTEGER DEFAULT 10000,
-                points_value INTEGER DEFAULT 1,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )";
-            $db->exec($createTable);
-
             // Check if settings exist
             $checkQuery = "SELECT id FROM app_settings LIMIT 1";
             $checkStmt = $db->prepare($checkQuery);
@@ -132,7 +104,7 @@ try {
                     tax_enabled = ?, tax_rate = ?, points_per_amount = ?, points_value = ?,
                     updated_at = CURRENT_TIMESTAMP 
                     WHERE id = ?";
-                
+
                 $stmt = $db->prepare($updateQuery);
                 $result = $stmt->execute([
                     $data['app_name'],
@@ -159,7 +131,7 @@ try {
                     store_website, store_social_media, receipt_header, receipt_footer, 
                     currency, logo_url, tax_enabled, tax_rate, points_per_amount, points_value
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                
+
                 $stmt = $db->prepare($insertQuery);
                 $result = $stmt->execute([
                     $data['app_name'],
@@ -181,9 +153,7 @@ try {
             }
 
             if ($result) {
-                ob_clean();
                 echo json_encode(['success' => true, 'message' => 'Settings saved successfully']);
-                ob_end_flush();
             } else {
                 throw new Exception('Failed to save settings');
             }
@@ -194,9 +164,7 @@ try {
     }
 
 } catch (Exception $e) {
-    ob_clean();
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-    ob_end_flush();
 }
 ?>

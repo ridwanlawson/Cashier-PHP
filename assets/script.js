@@ -7,6 +7,58 @@ let selectedMember = null;
 let appSettings = {};
 let transactions = [];
 let inventory = [];
+let heldTransactions = [];
+
+// Page navigation function
+function showPage(pageName) {
+    // Hide all pages
+    const pages = document.querySelectorAll('.page-content');
+    pages.forEach(page => page.classList.add('d-none'));
+    
+    // Show selected page
+    const selectedPage = document.getElementById(pageName);
+    if (selectedPage) {
+        selectedPage.classList.remove('d-none');
+    }
+    
+    // Update nav buttons
+    const navButtons = document.querySelectorAll('.nav-btn');
+    navButtons.forEach(btn => btn.classList.remove('active'));
+    
+    const activeButton = document.querySelector(`[onclick="showPage('${pageName}')"]`);
+    if (activeButton) {
+        activeButton.classList.add('active');
+    }
+    
+    // Load page-specific data
+    switch(pageName) {
+        case 'dashboard':
+            loadDashboardStats();
+            break;
+        case 'cashier':
+            loadProducts();
+            break;
+        case 'products':
+            loadProducts();
+            break;
+        case 'transactions':
+            loadTransactions();
+            break;
+        case 'inventory':
+            loadInventory();
+            break;
+        case 'members':
+            loadMembers();
+            break;
+        case 'settings':
+            loadSettings();
+            break;
+        case 'users':
+            loadUsers();
+            break;
+    }
+}
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Page loaded, initializing...');

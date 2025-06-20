@@ -919,6 +919,9 @@ $user = $auth->getUser();
                                         <button class="btn btn-warning" onclick="holdTransaction()">
                                             <i class="fas fa-pause"></i> Tahan Transaksi
                                         </button>
+                                        <button class="btn btn-info" onclick="showHeldTransactions()">
+                                            <i class="fas fa-list"></i> Lihat Transaksi Tertahan
+                                        </button>
                                     </div>
                                 </div>
                             </div>

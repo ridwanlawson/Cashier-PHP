@@ -59,6 +59,19 @@ try {
             )";
             $db->exec($createTableQuery);
 
+            // Add missing columns if they don't exist
+            try {
+                $db->exec("ALTER TABLE app_settings ADD COLUMN points_per_amount INTEGER DEFAULT 10000");
+            } catch (Exception $e) {
+                // Column might already exist
+            }
+            
+            try {
+                $db->exec("ALTER TABLE app_settings ADD COLUMN points_value INTEGER DEFAULT 1");
+            } catch (Exception $e) {
+                // Column might already exist
+            }
+
             // Get current settings
             $query = "SELECT * FROM app_settings LIMIT 1";
             $stmt = $db->prepare($query);

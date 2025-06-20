@@ -493,15 +493,52 @@ if (!$user || empty($user)) {
         }
 
         .light-mode .card {
-            background: #ffffff;
-            border: 1px solid #dee2e6;
-            color: #212529;
+            background: #ffffff !important;
+            border: 1px solid #dee2e6 !important;
+            color: #212529 !important;
         }
 
         .light-mode .card-header {
-            background: #f8f9fa;
-            border-bottom: 1px solid #dee2e6;
-            color: var(--accent-primary);
+            background: #f8f9fa !important;
+            border-bottom: 1px solid #dee2e6 !important;
+            color: var(--accent-primary) !important;
+        }
+
+        .light-mode .table-dark {
+            background: #ffffff !important;
+            color: #212529 !important;
+        }
+
+        .light-mode .table-dark td, 
+        .light-mode .table-dark th {
+            border-color: #dee2e6 !important;
+            color: #212529 !important;
+            background: #ffffff !important;
+        }
+
+        .light-mode .table-striped tbody tr:nth-of-type(odd) {
+            background: #f8f9fa !important;
+        }
+
+        .light-mode .alert {
+            background: #ffffff !important;
+            border: 1px solid #dee2e6 !important;
+            color: #212529 !important;
+        }
+
+        .light-mode .btn-outline-danger {
+            color: #dc3545 !important;
+            border-color: #dc3545 !important;
+        }
+
+        .light-mode .btn-outline-danger:hover {
+            background-color: #dc3545 !important;
+            border-color: #dc3545 !important;
+            color: #ffffff !important;
+        }
+
+        .light-mode .text-muted {
+            color: #6c757d !important;
         }
 
         /* Mobile Optimizations */

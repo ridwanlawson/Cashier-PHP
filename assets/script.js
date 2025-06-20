@@ -73,6 +73,9 @@ document.addEventListener('DOMContentLoaded', function() {
     loadUsers();
     loadHeldTransactions();
 
+    // Load dashboard stats immediately on page load
+    loadDashboardStats();
+
     // Set up event listeners
     setupEventListeners();
 
@@ -348,8 +351,9 @@ async function loadSettings() {
         }
     } catch (error) {
         console.error('Error loading settings:', error);
-        // Only show error if form fields exist (user is on settings page)
-        if (document.getElementById('app-name')) {
+        // Only show error if form fields exist and user is actually on settings page
+        const settingsPage = document.getElementById('settings');
+        if (document.getElementById('app-name') && settingsPage && !settingsPage.classList.contains('d-none')) {
             showAlert('Gagal memuat pengaturan', 'danger');
         }
     }
@@ -529,8 +533,9 @@ async function loadProducts() {
         populateStockProductSelect();
     } catch (error) {
         console.error('Error loading products:', error);
-        // Only show error if products array is actually empty
-        if (!products || products.length === 0) {
+        // Only show error if we're on products page and products failed to load
+        const productsPage = document.getElementById('products');
+        if (productsPage && !productsPage.classList.contains('d-none') && (!products || products.length === 0)) {
             showAlert('Gagal memuat data produk', 'danger');
         }
     }
@@ -540,12 +545,14 @@ function displayProducts(productsToShow = products) {
     const tbody = document.getElementById('products-tbody');
     if (!tbody) return;
 
-    // Destroy existing DataTable if it exists
-    if ($.fn.DataTable.isDataTable('#products-table')) {
+    // Properly destroy existing DataTable if it exists
+    const table = $('#products-table');
+    if ($.fn.DataTable.isDataTable(table)) {
         try {
-            $('#products-table').DataTable().clear().destroy();
+            table.DataTable().destroy();
+            table.empty();
         } catch (e) {
-            console.log('DataTable destroy error (expected):', e);
+            console.log('DataTable destroy error:', e);
         }
     }
 
@@ -576,27 +583,26 @@ function displayProducts(productsToShow = products) {
         tbody.appendChild(row);
     });
 
-    // Initialize DataTable with proper error handling
+    // Initialize DataTable with delay and proper error handling
     setTimeout(() => {
         try {
-            if (!$.fn.DataTable.isDataTable('#products-table')) {
-                $('#products-table').DataTable({
-                    language: {
-                        url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
-                    },
-                    dom: 'Bfrtip',
-                    buttons: [
-                        'copy', 'csv', 'excel', 'pdf', 'print'
-                    ],
-                    pageLength: 25,
-                    responsive: true,
-                    destroy: true
-                });
-            }
+            table.DataTable({
+                language: {
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
+                },
+                dom: 'Bfrtip',
+                buttons: [
+                    'copy', 'csv', 'excel', 'pdf', 'print'
+                ],
+                pageLength: 25,
+                responsive: true,
+                destroy: true,
+                retrieve: true
+            });
         } catch (e) {
             console.log('DataTable initialization error:', e);
         }
-    }, 100);
+    }, 200);
 }
 
 function showAddProductModal() {
@@ -1291,6 +1297,16 @@ async function printTransactionReceipt(transactionId) {
             showAlert('Transaksi tidak ditemukan', 'danger');
             return;
         }
+
+        // Store the transaction data for modal printing
+        window.currentReceiptData = {
+            id: transaction.id,
+            items: transaction.items,
+            total: transaction.total,
+            payment: transaction.total, // Default payment amount
+            change: 0,
+            transaction_date: transaction.transaction_date
+        };
 
         const receiptHTML = generateReceiptHTML(transaction.items, transaction);
 

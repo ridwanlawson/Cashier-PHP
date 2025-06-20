@@ -1,3 +1,4 @@
+
 <?php
 // Clean any output buffers and start fresh BEFORE any output
 while (ob_get_level()) {
@@ -22,11 +23,6 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 // For GET requests, allow all authenticated users to view settings
 // For POST requests, only admin can modify settings
-if ($method !== 'GET' && $user['role'] !== 'admin') {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Access denied']);
-    exit;
-}
 
 try {
     $database = new Database();
@@ -36,143 +32,159 @@ try {
         throw new Exception('Database connection failed');
     }
 
-    switch($_SERVER['REQUEST_METHOD']) {
+    switch($method) {
         case 'GET':
-            // Create app_settings table if it doesn't exist
-            $createTableQuery = "CREATE TABLE IF NOT EXISTS app_settings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                app_name TEXT DEFAULT 'Kasir Digital',
-                store_name TEXT DEFAULT 'Toko ABC',
-                store_address TEXT DEFAULT '',
-                store_phone TEXT DEFAULT '',
-                store_email TEXT DEFAULT '',
-                store_website TEXT DEFAULT '',
-                store_social_media TEXT DEFAULT '',
-                receipt_footer TEXT DEFAULT 'Terima kasih atas kunjungan Anda',
-                receipt_header TEXT DEFAULT '',
-                currency TEXT DEFAULT 'Rp',
-                logo_url TEXT DEFAULT '',
-                tax_enabled INTEGER DEFAULT 0,
-                tax_rate REAL DEFAULT 0,
-                points_per_amount INTEGER DEFAULT 10000,
-                points_value INTEGER DEFAULT 1
-            )";
-            $db->exec($createTableQuery);
-
-            // Add missing columns if they don't exist
-            try {
-                $db->exec("ALTER TABLE app_settings ADD COLUMN points_per_amount INTEGER DEFAULT 10000");
-            } catch (Exception $e) {
-                // Column might already exist
-            }
-            
-            try {
-                $db->exec("ALTER TABLE app_settings ADD COLUMN points_value INTEGER DEFAULT 1");
-            } catch (Exception $e) {
-                // Column might already exist
-            }
-
-            // Get current settings
-            $query = "SELECT * FROM app_settings LIMIT 1";
+            // Get settings - allow all authenticated users to read settings
+            $query = "SELECT * FROM settings LIMIT 1";
             $stmt = $db->prepare($query);
             $stmt->execute();
             $settings = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$settings) {
-                // Insert default settings if none exist
-                $insertQuery = "INSERT INTO app_settings 
-                    (app_name, store_name, store_address, store_phone, store_email, store_website, 
-                     store_social_media, receipt_footer, receipt_header, currency, logo_url, 
-                     tax_enabled, tax_rate, points_per_amount, points_value) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                
-                $stmt = $db->prepare($insertQuery);
-                $stmt->execute([
-                    'Kasir Digital',
-                    'Toko ABC',
-                    'Jl. Contoh No. 123, Kota, Provinsi',
-                    '021-12345678',
-                    'info@tokoabc.com',
-                    'www.tokoabc.com',
-                    '@tokoabc',
-                    'Terima kasih atas kunjungan Anda',
-                    '',
-                    'Rp',
-                    '',
-                    0,
-                    0,
-                    10000,
-                    1
-                ]);
-
-                // Get the newly inserted settings
-                $stmt = $db->prepare($query);
-                $stmt->execute();
-                $settings = $stmt->fetch(PDO::FETCH_ASSOC);
+                // Return default settings if none exist
+                $settings = [
+                    'app_name' => 'Kasir Digital',
+                    'store_name' => 'Toko ABC',
+                    'store_address' => '',
+                    'store_phone' => '',
+                    'store_email' => '',
+                    'store_website' => '',
+                    'store_social_media' => '',
+                    'receipt_header' => '',
+                    'receipt_footer' => 'Terima kasih atas kunjungan Anda',
+                    'currency' => 'Rp',
+                    'logo_url' => '',
+                    'tax_enabled' => false,
+                    'tax_rate' => 0,
+                    'points_per_amount' => 10000,
+                    'points_value' => 1
+                ];
+            } else {
+                // Convert string booleans to actual booleans
+                $settings['tax_enabled'] = (bool)$settings['tax_enabled'];
+                $settings['tax_rate'] = (float)$settings['tax_rate'];
+                $settings['points_per_amount'] = (int)$settings['points_per_amount'];
+                $settings['points_value'] = (int)$settings['points_value'];
             }
 
-            ob_clean();
+            // Clean output buffer and send JSON
+            if (ob_get_level()) {
+                ob_clean();
+            }
             echo json_encode($settings);
-            ob_end_flush();
+            if (ob_get_level()) {
+                ob_end_flush();
+            }
             break;
 
         case 'POST':
+            // Only admin can modify settings
+            if ($user['role'] !== 'admin') {
+                throw new Exception('Access denied. Admin role required.');
+            }
+
             $input = file_get_contents("php://input");
-            
-            if (empty($input)) {
+            if (!$input) {
                 throw new Exception('No input data received');
             }
-            
+
             $data = json_decode($input, true);
-            
             if (json_last_error() !== JSON_ERROR_NONE) {
                 throw new Exception('Invalid JSON data: ' . json_last_error_msg());
             }
-            
-            if (!$data) {
-                throw new Exception('No data provided');
+
+            // Validate required fields
+            if (empty($data['app_name']) || empty($data['store_name']) || empty($data['receipt_footer'])) {
+                throw new Exception('App name, store name, and receipt footer are required');
             }
 
-            // Update settings
-            $updateQuery = "UPDATE app_settings SET 
-                app_name = ?,
-                store_name = ?,
-                store_address = ?,
-                store_phone = ?,
-                store_email = ?,
-                store_website = ?,
-                store_social_media = ?,
-                receipt_footer = ?,
-                receipt_header = ?,
-                currency = ?,
-                logo_url = ?,
-                tax_enabled = ?,
-                tax_rate = ?,
-                points_per_amount = ?,
-                points_value = ?
-                WHERE id = 1";
+            // Check if settings table exists, create if not
+            $createTable = "CREATE TABLE IF NOT EXISTS settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                app_name TEXT NOT NULL,
+                store_name TEXT NOT NULL,
+                store_address TEXT,
+                store_phone TEXT,
+                store_email TEXT,
+                store_website TEXT,
+                store_social_media TEXT,
+                receipt_header TEXT,
+                receipt_footer TEXT NOT NULL,
+                currency TEXT DEFAULT 'Rp',
+                logo_url TEXT,
+                tax_enabled BOOLEAN DEFAULT 0,
+                tax_rate DECIMAL(5,2) DEFAULT 0,
+                points_per_amount INTEGER DEFAULT 10000,
+                points_value INTEGER DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )";
+            $db->exec($createTable);
 
-            $stmt = $db->prepare($updateQuery);
-            $result = $stmt->execute([
-                $data['app_name'] ?? 'Kasir Digital',
-                $data['store_name'] ?? 'Toko ABC',
-                $data['store_address'] ?? '',
-                $data['store_phone'] ?? '',
-                $data['store_email'] ?? '',
-                $data['store_website'] ?? '',
-                $data['store_social_media'] ?? '',
-                $data['receipt_footer'] ?? 'Terima kasih atas kunjungan Anda',
-                $data['receipt_header'] ?? '',
-                $data['currency'] ?? 'Rp',
-                $data['logo_url'] ?? '',
-                $data['tax_enabled'] ? 1 : 0,
-                $data['tax_rate'] ?? 0,
-                $data['points_per_amount'] ?? 10000,
-                $data['points_value'] ?? 1
-            ]);
+            // Check if settings exist
+            $checkQuery = "SELECT id FROM settings LIMIT 1";
+            $checkStmt = $db->prepare($checkQuery);
+            $checkStmt->execute();
+            $existingSettings = $checkStmt->fetch();
+
+            if ($existingSettings) {
+                // Update existing settings
+                $updateQuery = "UPDATE settings SET 
+                    app_name = ?, store_name = ?, store_address = ?, store_phone = ?, 
+                    store_email = ?, store_website = ?, store_social_media = ?, 
+                    receipt_header = ?, receipt_footer = ?, currency = ?, logo_url = ?, 
+                    tax_enabled = ?, tax_rate = ?, points_per_amount = ?, points_value = ?,
+                    updated_at = CURRENT_TIMESTAMP 
+                    WHERE id = ?";
+                
+                $stmt = $db->prepare($updateQuery);
+                $result = $stmt->execute([
+                    $data['app_name'],
+                    $data['store_name'],
+                    $data['store_address'] ?? '',
+                    $data['store_phone'] ?? '',
+                    $data['store_email'] ?? '',
+                    $data['store_website'] ?? '',
+                    $data['store_social_media'] ?? '',
+                    $data['receipt_header'] ?? '',
+                    $data['receipt_footer'],
+                    $data['currency'] ?? 'Rp',
+                    $data['logo_url'] ?? '',
+                    $data['tax_enabled'] ? 1 : 0,
+                    $data['tax_rate'] ?? 0,
+                    $data['points_per_amount'] ?? 10000,
+                    $data['points_value'] ?? 1,
+                    $existingSettings['id']
+                ]);
+            } else {
+                // Insert new settings
+                $insertQuery = "INSERT INTO settings (
+                    app_name, store_name, store_address, store_phone, store_email, 
+                    store_website, store_social_media, receipt_header, receipt_footer, 
+                    currency, logo_url, tax_enabled, tax_rate, points_per_amount, points_value
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                
+                $stmt = $db->prepare($insertQuery);
+                $result = $stmt->execute([
+                    $data['app_name'],
+                    $data['store_name'],
+                    $data['store_address'] ?? '',
+                    $data['store_phone'] ?? '',
+                    $data['store_email'] ?? '',
+                    $data['store_website'] ?? '',
+                    $data['store_social_media'] ?? '',
+                    $data['receipt_header'] ?? '',
+                    $data['receipt_footer'],
+                    $data['currency'] ?? 'Rp',
+                    $data['logo_url'] ?? '',
+                    $data['tax_enabled'] ? 1 : 0,
+                    $data['tax_rate'] ?? 0,
+                    $data['points_per_amount'] ?? 10000,
+                    $data['points_value'] ?? 1
+                ]);
+            }
 
             if ($result) {
-                // Ensure clean output
                 if (ob_get_level()) {
                     ob_clean();
                 }
@@ -190,9 +202,13 @@ try {
     }
 
 } catch (Exception $e) {
-    ob_clean();
+    if (ob_get_level()) {
+        ob_clean();
+    }
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-    ob_end_flush();
+    if (ob_get_level()) {
+        ob_end_flush();
+    }
 }
 ?>

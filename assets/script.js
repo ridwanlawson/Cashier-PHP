@@ -208,7 +208,7 @@ async function loadAppSettings() {
         }
     } catch (error) {
         console.error('Failed to load basic settings:', error);
-        // Set default settings if loading fails
+        // Set default settings if loading fails - don't show error to user
         appSettings = {
             app_name: 'Kasir Digital',
             store_name: 'Toko ABC',
@@ -348,7 +348,10 @@ async function loadSettings() {
         }
     } catch (error) {
         console.error('Error loading settings:', error);
-        showAlert('Gagal memuat pengaturan', 'danger');
+        // Only show error if form fields exist (user is on settings page)
+        if (document.getElementById('app-name')) {
+            showAlert('Gagal memuat pengaturan', 'danger');
+        }
     }
 }
 
@@ -526,7 +529,10 @@ async function loadProducts() {
         populateStockProductSelect();
     } catch (error) {
         console.error('Error loading products:', error);
-        showAlert('Gagal memuat data produk', 'danger');
+        // Only show error if products array is actually empty
+        if (!products || products.length === 0) {
+            showAlert('Gagal memuat data produk', 'danger');
+        }
     }
 }
 
@@ -536,7 +542,11 @@ function displayProducts(productsToShow = products) {
 
     // Destroy existing DataTable if it exists
     if ($.fn.DataTable.isDataTable('#products-table')) {
-        $('#products-table').DataTable().destroy();
+        try {
+            $('#products-table').DataTable().clear().destroy();
+        } catch (e) {
+            console.log('DataTable destroy error (expected):', e);
+        }
     }
 
     tbody.innerHTML = '';
@@ -566,19 +576,26 @@ function displayProducts(productsToShow = products) {
         tbody.appendChild(row);
     });
 
-    // Initialize DataTable
+    // Initialize DataTable with proper error handling
     setTimeout(() => {
-        $('#products-table').DataTable({
-            language: {
-                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
-            },
-            dom: 'Bfrtip',
-            buttons: [
-                'copy', 'csv', 'excel', 'pdf', 'print'
-            ],
-            pageLength: 25,
-            responsive: true
-        });
+        try {
+            if (!$.fn.DataTable.isDataTable('#products-table')) {
+                $('#products-table').DataTable({
+                    language: {
+                        url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
+                    },
+                    dom: 'Bfrtip',
+                    buttons: [
+                        'copy', 'csv', 'excel', 'pdf', 'print'
+                    ],
+                    pageLength: 25,
+                    responsive: true,
+                    destroy: true
+                });
+            }
+        } catch (e) {
+            console.log('DataTable initialization error:', e);
+        }
     }, 100);
 }
 
@@ -1142,7 +1159,11 @@ function displayTransactions() {
 
     // Destroy existing DataTable if it exists
     if ($.fn.DataTable.isDataTable('#transactions-table')) {
-        $('#transactions-table').DataTable().destroy();
+        try {
+            $('#transactions-table').DataTable().clear().destroy();
+        } catch (e) {
+            console.log('DataTable destroy error (expected):', e);
+        }
     }
 
     tbody.innerHTML = '';
@@ -1167,20 +1188,27 @@ function displayTransactions() {
         tbody.appendChild(row);
     });
 
-    // Initialize DataTable
+    // Initialize DataTable with proper error handling
     setTimeout(() => {
-        $('#transactions-table').DataTable({
-            language: {
-                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
-            },
-            dom: 'Bfrtip',
-            buttons: [
-                'copy', 'csv', 'excel', 'pdf', 'print'
-            ],
-            pageLength: 25,
-            responsive: true,
-            order: [[0, 'desc']]
-        });
+        try {
+            if (!$.fn.DataTable.isDataTable('#transactions-table')) {
+                $('#transactions-table').DataTable({
+                    language: {
+                        url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
+                    },
+                    dom: 'Bfrtip',
+                    buttons: [
+                        'copy', 'csv', 'excel', 'pdf', 'print'
+                    ],
+                    pageLength: 25,
+                    responsive: true,
+                    order: [[0, 'desc']],
+                    destroy: true
+                });
+            }
+        } catch (e) {
+            console.log('DataTable initialization error:', e);
+        }
     }, 100);
 }
 
@@ -1435,7 +1463,11 @@ function displayInventoryData(inventoryData) {
 
     // Destroy existing DataTable if it exists
     if ($.fn.DataTable.isDataTable('#inventory-table')) {
-        $('#inventory-table').DataTable().destroy();
+        try {
+            $('#inventory-table').DataTable().clear().destroy();
+        } catch (e) {
+            console.log('DataTable destroy error (expected):', e);
+        }
     }
 
     tbody.innerHTML = '';
@@ -1458,20 +1490,27 @@ function displayInventoryData(inventoryData) {
         tbody.appendChild(row);
     });
 
-    // Reinitialize DataTable
+    // Reinitialize DataTable with proper error handling
     setTimeout(() => {
-        $('#inventory-table').DataTable({
-            language: {
-                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
-            },
-            dom: 'Bfrtip',
-            buttons: [
-                'copy', 'csv', 'excel', 'pdf', 'print'
-            ],
-            pageLength: 25,
-            responsive: true,
-            order: [[0, 'desc']]
-        });
+        try {
+            if (!$.fn.DataTable.isDataTable('#inventory-table')) {
+                $('#inventory-table').DataTable({
+                    language: {
+                        url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
+                    },
+                    dom: 'Bfrtip',
+                    buttons: [
+                        'copy', 'csv', 'excel', 'pdf', 'print'
+                    ],
+                    pageLength: 25,
+                    responsive: true,
+                    order: [[0, 'desc']],
+                    destroy: true
+                });
+            }
+        } catch (e) {
+            console.log('DataTable initialization error:', e);
+        }
     }, 100);
 }
 
@@ -1594,7 +1633,11 @@ function displayUsers() {
 
     // Destroy existing DataTable if it exists
     if ($.fn.DataTable.isDataTable('#users-table')) {
-        $('#users-table').DataTable().destroy();
+        try {
+            $('#users-table').DataTable().clear().destroy();
+        } catch (e) {
+            console.log('DataTable destroy error (expected):', e);
+        }
     }
 
     tbody.innerHTML = '';
@@ -1623,15 +1666,22 @@ function displayUsers() {
         tbody.appendChild(row);
     });
 
-    // Initialize DataTable
+    // Initialize DataTable with proper error handling
     setTimeout(() => {
-        $('#users-table').DataTable({
-            language: {
-                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
-            },
-            pageLength: 25,
-            responsive: true
-        });
+        try {
+            if (!$.fn.DataTable.isDataTable('#users-table')) {
+                $('#users-table').DataTable({
+                    language: {
+                        url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
+                    },
+                    pageLength: 25,
+                    responsive: true,
+                    destroy: true
+                });
+            }
+        } catch (e) {
+            console.log('DataTable initialization error:', e);
+        }
     }, 100);
 }
 
@@ -2011,21 +2061,29 @@ async function resumeTransaction(transactionId) {
             // Delete held transaction
             await deleteHeldTransaction(transactionId, false);
 
-            // Close modal properly
+            // Close modal properly with complete cleanup
             const modal = bootstrap.Modal.getInstance(document.getElementById('heldTransactionsModal'));
             if (modal) {
                 modal.hide();
-                // Force remove backdrop if it exists
-                setTimeout(() => {
-                    const backdrop = document.querySelector('.modal-backdrop');
-                    if (backdrop) {
-                        backdrop.remove();
-                    }
-                    // Reset body styles
-                    document.body.classList.remove('modal-open');
-                    document.body.style.removeProperty('padding-right');
-                }, 300);
             }
+
+            // Force complete modal cleanup
+            setTimeout(() => {
+                // Remove modal backdrop
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach(backdrop => backdrop.remove());
+                
+                // Reset body classes and styles
+                document.body.classList.remove('modal-open');
+                document.body.style.removeProperty('padding-right');
+                document.body.style.removeProperty('overflow');
+                
+                // Remove the modal from DOM completely
+                const modalElement = document.getElementById('heldTransactionsModal');
+                if (modalElement) {
+                    modalElement.remove();
+                }
+            }, 100);
 
             // Switch to cashier page
             showPage('cashier');
@@ -2047,9 +2105,34 @@ async function deleteHeldTransaction(transactionId, showMessage = true) {
         if (result.success) {
             if (showMessage) {
                 showAlert('Transaksi tertunda dihapus', 'info');
-                // Refresh held transactions modal
+                
+                // Close modal with complete cleanup
+                const modal = bootstrap.Modal.getInstance(document.getElementById('heldTransactionsModal'));
+                if (modal) {
+                    modal.hide();
+                }
+
+                // Force complete modal cleanup
                 setTimeout(() => {
-                    showHeldTransactions();
+                    // Remove modal backdrop
+                    const backdrops = document.querySelectorAll('.modal-backdrop');
+                    backdrops.forEach(backdrop => backdrop.remove());
+                    
+                    // Reset body classes and styles
+                    document.body.classList.remove('modal-open');
+                    document.body.style.removeProperty('padding-right');
+                    document.body.style.removeProperty('overflow');
+                    
+                    // Remove the modal from DOM
+                    const modalElement = document.getElementById('heldTransactionsModal');
+                    if (modalElement) {
+                        modalElement.remove();
+                    }
+
+                    // Refresh held transactions modal
+                    setTimeout(() => {
+                        showHeldTransactions();
+                    }, 200);
                 }, 100);
             }
         }
@@ -2090,7 +2173,11 @@ function displayMembers() {
 
     // Destroy existing DataTable if it exists
     if ($.fn.DataTable.isDataTable('#members-table')) {
-        $('#members-table').DataTable().destroy();
+        try {
+            $('#members-table').DataTable().clear().destroy();
+        } catch (e) {
+            console.log('DataTable destroy error (expected):', e);
+        }
     }
 
     tbody.innerHTML = '';
@@ -2119,15 +2206,22 @@ function displayMembers() {
         tbody.appendChild(row);
     });
 
-    // Initialize DataTable
+    // Initialize DataTable with proper error handling
     setTimeout(() => {
-        $('#members-table').DataTable({
-            language: {
-                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
-            },
-            pageLength: 25,
-            responsive: true
-        });
+        try {
+            if (!$.fn.DataTable.isDataTable('#members-table')) {
+                $('#members-table').DataTable({
+                    language: {
+                        url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
+                    },
+                    pageLength: 25,
+                    responsive: true,
+                    destroy: true
+                });
+            }
+        } catch (e) {
+            console.log('DataTable initialization error:', e);
+        }
     }, 100);
 }
 

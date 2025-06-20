@@ -1,4 +1,3 @@
-
 <?php
 echo "=== KASIR DIGITAL - SAMPLE DATA INSTALLER ===\n";
 echo "Installing sample data for Kasir Digital POS System...\n\n";

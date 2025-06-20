@@ -44,6 +44,20 @@ Aplikasi Kasir Digital adalah sistem Point of Sale (POS) yang dibuat dengan PHP 
 - ✅ Autentikasi aman
 - ✅ Role-based access control
 
+### 🎫 Manajemen Member
+- ✅ Pendaftaran member baru
+- ✅ Pencarian member cepat
+- ✅ Sistem poin member
+- ✅ Integrasi dengan transaksi kasir
+- ✅ CRUD lengkap untuk data member
+
+### 💳 Fitur Kasir Lanjutan
+- ✅ Integrasi member dalam transaksi
+- ✅ Pencatatan metode pembayaran
+- ✅ Sistem Hold/Resume transaksi
+- ✅ Cetak struk dengan data kasir dan member
+- ✅ Perhitungan diskon per item
+
 ### 🎨 UI/UX Modern
 - ✅ Dark/Light mode toggle
 - ✅ Responsive design (Mobile & Desktop)
@@ -181,10 +195,13 @@ Aplikasi mendukung dark mode dan light mode. Setting akan tersimpan di localStor
 ### Database Schema
 Tables akan dibuat otomatis:
 - `products` - Data produk
-- `transactions` - Header transaksi
-- `transaction_items` - Detail item transaksi
+- `transactions` - Header transaksi (dengan kasir dan member)
+- `transaction_items` - Detail item transaksi (dengan diskon)
 - `users` - Data pengguna
+- `members` - Data member dengan sistem poin
+- `held_transactions` - Transaksi yang ditahan
 - `inventory_log` - Log perubahan stok
+- `app_settings` - Pengaturan aplikasi
 
 ## 🐛 Troubleshooting
 

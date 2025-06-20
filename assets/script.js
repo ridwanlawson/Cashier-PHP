@@ -89,6 +89,9 @@ function showPage(pageId, linkElement) {
         case 'users':
             loadUsers();
             break;
+        case 'members':
+            loadMembers();
+            break;
         case 'settings':
             loadSettings();
             break;
@@ -1593,6 +1596,423 @@ function printCurrentReceipt() {
     }
 }
 
+// Member management functions
+let selectedMember = null;
+
+async function searchMember() {
+    const searchTerm = document.getElementById('member-search').value.trim();
+    
+    if (searchTerm.length < 2) {
+        clearMember();
+        return;
+    }
+    
+    try {
+        const members = await apiRequest(`api/members.php?search=${encodeURIComponent(searchTerm)}`);
+        displayMemberSuggestions(members);
+    } catch (error) {
+        console.error('Error searching members:', error);
+    }
+}
+
+function displayMemberSuggestions(members) {
+    const container = document.getElementById('member-suggestions');
+    if (!container) {
+        // Create suggestions container if not exists
+        const memberCard = document.querySelector('#member-search').closest('.card-body');
+        const suggestionsDiv = document.createElement('div');
+        suggestionsDiv.id = 'member-suggestions';
+        suggestionsDiv.className = 'list-group mt-2';
+        memberCard.appendChild(suggestionsDiv);
+        return displayMemberSuggestions(members);
+    }
+    
+    container.innerHTML = '';
+    
+    if (!members || members.length === 0) {
+        container.innerHTML = '<div class="list-group-item">Member tidak ditemukan</div>';
+        return;
+    }
+    
+    members.forEach(member => {
+        const item = document.createElement('div');
+        item.className = 'list-group-item list-group-item-action cursor-pointer';
+        item.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>${member.name}</strong><br>
+                    <small class="text-muted">${member.phone}</small>
+                </div>
+                <span class="text-cyan">${member.points} poin</span>
+            </div>
+        `;
+        item.onclick = () => selectMember(member);
+        container.appendChild(item);
+    });
+}
+
+function selectMember(member) {
+    selectedMember = member;
+    document.getElementById('member-search').value = member.name;
+    document.getElementById('selected-member').innerHTML = `
+        <strong>${member.name}</strong><br>
+        <small>Tel: ${member.phone} | Poin: ${member.points}</small>
+    `;
+    
+    // Clear suggestions
+    const container = document.getElementById('member-suggestions');
+    if (container) container.innerHTML = '';
+}
+
+function clearMember() {
+    selectedMember = null;
+    document.getElementById('member-search').value = '';
+    document.getElementById('selected-member').innerHTML = '';
+    
+    const container = document.getElementById('member-suggestions');
+    if (container) container.innerHTML = '';
+}
+
+// Payment method functions
+function updatePaymentMethod() {
+    const paymentMethod = document.getElementById('payment-method').value;
+    console.log('Payment method changed to:', paymentMethod);
+    
+    // You can add specific logic for different payment methods here
+    // For example, show/hide certain fields based on payment method
+}
+
+// Held transactions functions
+let heldTransactions = [];
+
+function holdTransaction() {
+    if (cart.length === 0) {
+        showAlert('Keranjang kosong, tidak ada yang bisa ditahan!', 'warning');
+        return;
+    }
+    
+    const transactionData = {
+        items: [...cart],
+        member: selectedMember,
+        payment_method: document.getElementById('payment-method').value,
+        held_at: new Date().toISOString()
+    };
+    
+    // Save to held transactions
+    saveHeldTransaction(transactionData);
+    
+    // Clear current cart
+    clearCart();
+    clearMember();
+    
+    showAlert('Transaksi berhasil ditahan!', 'success');
+}
+
+async function saveHeldTransaction(transactionData) {
+    try {
+        const result = await apiRequest('api/held-transactions.php', {
+            method: 'POST',
+            body: JSON.stringify(transactionData)
+        });
+        
+        if (result.success) {
+            console.log('Transaction held successfully');
+        }
+    } catch (error) {
+        console.error('Error saving held transaction:', error);
+    }
+}
+
+async function showHeldTransactions() {
+    try {
+        const heldTransactions = await apiRequest('api/held-transactions.php');
+        displayHeldTransactionsModal(heldTransactions);
+    } catch (error) {
+        console.error('Error loading held transactions:', error);
+        showAlert('Gagal memuat transaksi tertunda', 'danger');
+    }
+}
+
+function displayHeldTransactionsModal(transactions) {
+    let modalHTML = `
+        <div class="modal fade" id="heldTransactionsModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title text-cyan">Transaksi Tertunda</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+    `;
+    
+    if (!transactions || transactions.length === 0) {
+        modalHTML += '<p class="text-center text-muted">Tidak ada transaksi tertunda</p>';
+    } else {
+        modalHTML += '<div class="list-group">';
+        transactions.forEach(transaction => {
+            const itemCount = transaction.items ? transaction.items.length : 0;
+            const total = transaction.items ? transaction.items.reduce((sum, item) => sum + item.subtotal, 0) : 0;
+            
+            modalHTML += `
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>Transaksi #${transaction.id}</strong><br>
+                            <small class="text-muted">
+                                ${itemCount} item(s) - ${new Date(transaction.held_at).toLocaleString('id-ID')}
+                                ${transaction.member ? `<br>Member: ${transaction.member.name}` : ''}
+                            </small>
+                        </div>
+                        <div class="text-end">
+                            <div class="text-cyan mb-2">${appSettings.currency || 'Rp'} ${formatNumber(total)}</div>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-success" onclick="resumeTransaction(${transaction.id})">
+                                    <i class="fas fa-play"></i> Resume
+                                </button>
+                                <button class="btn btn-danger" onclick="deleteHeldTransaction(${transaction.id})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        modalHTML += '</div>';
+    }
+    
+    modalHTML += `
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('heldTransactionsModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Show modal
+    new bootstrap.Modal(document.getElementById('heldTransactionsModal')).show();
+}
+
+async function resumeTransaction(transactionId) {
+    try {
+        const transaction = await apiRequest(`api/held-transactions.php?id=${transactionId}`);
+        
+        if (transaction) {
+            // Clear current cart
+            cart = [];
+            
+            // Load held transaction data
+            cart = transaction.items || [];
+            
+            // Set member if exists
+            if (transaction.member) {
+                selectMember(transaction.member);
+            }
+            
+            // Set payment method
+            if (transaction.payment_method) {
+                document.getElementById('payment-method').value = transaction.payment_method;
+            }
+            
+            // Update cart display
+            updateCart();
+            
+            // Delete held transaction
+            await deleteHeldTransaction(transactionId, false);
+            
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('heldTransactionsModal')).hide();
+            
+            // Switch to cashier page
+            showPage('cashier');
+            
+            showAlert('Transaksi berhasil dipulihkan!', 'success');
+        }
+    } catch (error) {
+        console.error('Error resuming transaction:', error);
+        showAlert('Gagal memulihkan transaksi', 'danger');
+    }
+}
+
+async function deleteHeldTransaction(transactionId, showMessage = true) {
+    try {
+        const result = await apiRequest(`api/held-transactions.php?id=${transactionId}`, {
+            method: 'DELETE'
+        });
+        
+        if (result.success) {
+            if (showMessage) {
+                showAlert('Transaksi tertunda dihapus', 'info');
+                // Refresh held transactions modal
+                showHeldTransactions();
+            }
+        }
+    } catch (error) {
+        console.error('Error deleting held transaction:', error);
+        if (showMessage) {
+            showAlert('Gagal menghapus transaksi tertunda', 'danger');
+        }
+    }
+}
+
+// Members management page functions
+async function loadMembers() {
+    try {
+        const members = await apiRequest('api/members.php');
+        displayMembers(members);
+    } catch (error) {
+        console.error('Error loading members:', error);
+        showAlert('Gagal memuat data member', 'danger');
+    }
+}
+
+function displayMembers(members) {
+    const tbody = document.getElementById('members-tbody');
+    if (!tbody) return;
+
+    // Destroy existing DataTable if it exists
+    if ($.fn.DataTable.isDataTable('#members-table')) {
+        $('#members-table').DataTable().destroy();
+    }
+
+    tbody.innerHTML = '';
+
+    if (!Array.isArray(members) || members.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center">Tidak ada data member</td></tr>';
+        return;
+    }
+
+    members.forEach(member => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${member.name}</td>
+            <td>${member.phone}</td>
+            <td>${member.points}</td>
+            <td>${new Date(member.created_at).toLocaleDateString('id-ID')}</td>
+            <td>
+                <button class="btn btn-warning btn-sm me-1" onclick="editMember(${member.id})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="deleteMember(${member.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+
+    // Initialize DataTable
+    setTimeout(() => {
+        $('#members-table').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
+            },
+            dom: 'Bfrtip',
+            buttons: [
+                'copy', 'csv', 'excel', 'pdf', 'print'
+            ],
+            pageLength: 25,
+            responsive: true
+        });
+    }, 100);
+}
+
+function showAddMemberModal() {
+    document.getElementById('memberModalTitle').textContent = 'Tambah Member';
+    document.getElementById('memberForm').reset();
+    document.getElementById('member-id').value = '';
+    new bootstrap.Modal(document.getElementById('memberModal')).show();
+}
+
+function editMember(id) {
+    // Get member data from current loaded members
+    const member = window.currentMembers?.find(m => m.id === id);
+    if (!member) {
+        showAlert('Data member tidak ditemukan', 'danger');
+        return;
+    }
+
+    document.getElementById('memberModalTitle').textContent = 'Edit Member';
+    document.getElementById('member-id').value = member.id;
+    document.getElementById('member-name').value = member.name;
+    document.getElementById('member-phone').value = member.phone;
+    document.getElementById('member-points').value = member.points;
+
+    new bootstrap.Modal(document.getElementById('memberModal')).show();
+}
+
+async function saveMember() {
+    try {
+        const id = document.getElementById('member-id').value;
+        const memberData = {
+            name: document.getElementById('member-name').value.trim(),
+            phone: document.getElementById('member-phone').value.trim(),
+            points: parseInt(document.getElementById('member-points').value) || 0
+        };
+
+        if (!memberData.name || !memberData.phone) {
+            showAlert('Nama dan nomor telepon harus diisi!', 'warning');
+            return;
+        }
+
+        let result;
+        if (id) {
+            memberData.id = parseInt(id);
+            result = await apiRequest('api/members.php', {
+                method: 'PUT',
+                body: JSON.stringify(memberData)
+            });
+        } else {
+            result = await apiRequest('api/members.php', {
+                method: 'POST',
+                body: JSON.stringify(memberData)
+            });
+        }
+
+        if (result.success) {
+            showAlert(id ? 'Member berhasil diupdate!' : 'Member berhasil ditambahkan!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('memberModal')).hide();
+            loadMembers();
+        } else {
+            showAlert(result.error || 'Gagal menyimpan member', 'danger');
+        }
+    } catch (error) {
+        console.error('Error saving member:', error);
+        showAlert('Gagal menyimpan member: ' + error.message, 'danger');
+    }
+}
+
+async function deleteMember(id) {
+    if (!confirm('Apakah Anda yakin ingin menghapus member ini?')) return;
+
+    try {
+        const result = await apiRequest(`api/members.php?id=${id}`, {
+            method: 'DELETE'
+        });
+
+        if (result.success) {
+            showAlert('Member berhasil dihapus!', 'success');
+            loadMembers();
+        } else {
+            showAlert(result.error || 'Gagal menghapus member', 'danger');
+        }
+    } catch (error) {
+        console.error('Error deleting member:', error);
+        showAlert('Gagal menghapus member: ' + error.message, 'danger');
+    }
+}
+
 // Utility functions
 function formatNumber(number) {
     return new Intl.NumberFormat('id-ID').format(number);
@@ -1669,6 +2089,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const marginValue = document.getElementById('margin-value');
     if (marginValue) {
         marginValue.addEventListener('input', calculateSellingPrice);
+    }
+
+    // Member search event listener
+    const memberSearch = document.getElementById('member-search');
+    if (memberSearch) {
+        memberSearch.addEventListener('input', searchMember);
     }
 
     // Close mobile menu when nav link is clicked

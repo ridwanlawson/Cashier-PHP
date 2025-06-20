@@ -75,6 +75,51 @@ try {
     )";
     $db->exec($createInventoryLogTable);
 
+    // Members table
+    $createMembersTable = "CREATE TABLE IF NOT EXISTS members (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        phone TEXT UNIQUE NOT NULL,
+        points INTEGER NOT NULL DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )";
+    $db->exec($createMembersTable);
+
+    // Held transactions table
+    $createHeldTransactionsTable = "CREATE TABLE IF NOT EXISTS held_transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        items TEXT NOT NULL,
+        member TEXT,
+        payment_method TEXT DEFAULT 'cash',
+        held_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )";
+    $db->exec($createHeldTransactionsTable);
+
+    // Add new columns to existing tables if they don't exist
+    try {
+        $db->exec("ALTER TABLE transactions ADD COLUMN cashier_id INTEGER DEFAULT NULL");
+    } catch (Exception $e) {
+        // Column might already exist
+    }
+    
+    try {
+        $db->exec("ALTER TABLE transactions ADD COLUMN member_id INTEGER DEFAULT NULL");
+    } catch (Exception $e) {
+        // Column might already exist
+    }
+    
+    try {
+        $db->exec("ALTER TABLE transactions ADD COLUMN payment_method TEXT DEFAULT 'cash'");
+    } catch (Exception $e) {
+        // Column might already exist
+    }
+    
+    try {
+        $db->exec("ALTER TABLE transaction_items ADD COLUMN discount REAL DEFAULT 0");
+    } catch (Exception $e) {
+        // Column might already exist
+    }
+
     echo "✓ Database tables created\n\n";
 
     // Begin transaction
@@ -154,6 +199,29 @@ try {
         }
     }
     echo "✓ Installed {$productCount} products\n\n";
+
+    // Sample members
+    echo "👥 Installing sample members...\n";
+    $sampleMembers = [
+        ['Ahmad Santoso', '081234567890', 150],
+        ['Siti Rahayu', '081234567891', 85],
+        ['Budi Prasetyo', '081234567892', 220],
+        ['Rina Kusuma', '081234567893', 45],
+        ['Joko Widodo', '081234567894', 380],
+        ['Maya Sari', '081234567895', 120],
+        ['Andi Wijaya', '081234567896', 95],
+        ['Dewi Lestari', '081234567897', 275]
+    ];
+
+    $memberStmt = $db->prepare("INSERT OR IGNORE INTO members (name, phone, points) VALUES (?, ?, ?)");
+    $memberCount = 0;
+    foreach ($sampleMembers as $member) {
+        if ($memberStmt->execute($member)) {
+            $memberCount++;
+            echo "  → {$member[0]} - {$member[1]} ({$member[2]} poin)\n";
+        }
+    }
+    echo "✓ Installed {$memberCount} members\n\n";
 
     // Sample transactions
     echo "💰 Installing sample transactions...\n";
@@ -238,6 +306,7 @@ try {
     echo "📋 SUMMARY:\n";
     echo "   • Users installed: {$userCount}\n";
     echo "   • Products installed: {$productCount}\n";
+    echo "   • Members installed: {$memberCount}\n";
     echo "   • Sample transactions: {$transactionCount}\n";
     echo "   • Inventory logs: {$inventoryCount}\n";
     echo "   • App settings: configured\n\n";

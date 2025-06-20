@@ -644,6 +644,11 @@ $user = $auth->getUser();
                             <i class="fas fa-warehouse me-2"></i> Barang Masuk
                         </a>
                     </li>
+                    <li class="nav-item mb-2">
+                        <a class="nav-link" href="#" onclick="showPage('members', this)">
+                            <i class="fas fa-id-card me-2"></i> Kelola Member
+                        </a>
+                    </li>
                     <?php if ($user['role'] === 'admin'): ?>
                     <li class="nav-item mb-2">
                         <a class="nav-link" href="#" onclick="showPage('users', this)">
@@ -977,6 +982,35 @@ $user = $auth->getUser();
                     </div>
                 </div>
 
+                <!-- Members Page -->
+                <div id="members" class="page-content d-none">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2 class="text-cyan">Kelola Member</h2>
+                        <button class="btn btn-primary glow" onclick="showAddMemberModal()">
+                            <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">Tambah</span> Member
+                        </button>
+                    </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-dark table-striped" id="members-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nama</th>
+                                            <th>Telepon</th>
+                                            <th>Poin</th>
+                                            <th>Terdaftar</th>
+                                            <th>Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="members-tbody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Users Management Page (Admin Only) -->
                 <?php if ($user['role'] === 'admin'): ?>
                 <div id="users" class="page-content d-none">
@@ -1262,6 +1296,39 @@ $user = $auth->getUser();
         </div>
     </div>
     <?php endif; ?>
+
+    <!-- Member Modal -->
+    <div class="modal fade" id="memberModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-cyan" id="memberModalTitle">Tambah Member</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="memberForm">
+                        <input type="hidden" id="member-id">
+                        <div class="mb-3">
+                            <label for="member-name" class="form-label">Nama Lengkap</label>
+                            <input type="text" class="form-control" id="member-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="member-phone" class="form-label">Nomor Telepon</label>
+                            <input type="tel" class="form-control" id="member-phone" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="member-points" class="form-label">Poin</label>
+                            <input type="number" class="form-control" id="member-points" value="0" min="0">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary" onclick="saveMember()">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>

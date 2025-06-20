@@ -19,24 +19,47 @@ try {
 
     switch($method) {
         case 'GET':
-            if (isset($_GET['search'])) {
+            if (isset($_GET['id'])) {
+                $id = (int)$_GET['id'];
+                $query = "SELECT * FROM members WHERE id = ?";
+                $stmt = $db->prepare($query);
+                $stmt->execute([$id]);
+                $member = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($member) {
+                    $member['id'] = (int)$member['id'];
+                    $member['points'] = (int)$member['points'];
+                    echo json_encode($member);
+                } else {
+                    echo json_encode(null);
+                }
+            } elseif (isset($_GET['search'])) {
                 $search = $_GET['search'];
                 $query = "SELECT * FROM members WHERE name LIKE ? OR phone LIKE ? ORDER BY name LIMIT 10";
                 $stmt = $db->prepare($query);
                 $stmt->execute(["%$search%", "%$search%"]);
+                $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach($members as &$member) {
+                    $member['id'] = (int)$member['id'];
+                    $member['points'] = (int)$member['points'];
+                }
+                
+                echo json_encode($members);
             } else {
                 $query = "SELECT * FROM members ORDER BY name";
                 $stmt = $db->prepare($query);
                 $stmt->execute();
+                $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach($members as &$member) {
+                    $member['id'] = (int)$member['id'];
+                    $member['points'] = (int)$member['points'];
+                }
+                
+                // Store members for reference
+                echo json_encode($members);
             }
-            
-            $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            foreach($members as &$member) {
-                $member['id'] = (int)$member['id'];
-                $member['points'] = (int)$member['points'];
-            }
-            
-            echo json_encode($members);
             break;
             
         case 'POST':
@@ -47,9 +70,18 @@ try {
                 throw new Exception('Name and phone are required');
             }
             
-            $query = "INSERT INTO members (name, phone, points) VALUES (?, ?, 0)";
+            // Check if phone already exists
+            $checkQuery = "SELECT id FROM members WHERE phone = ?";
+            $checkStmt = $db->prepare($checkQuery);
+            $checkStmt->execute([$data['phone']]);
+            if ($checkStmt->fetch()) {
+                throw new Exception('Nomor telepon sudah terdaftar');
+            }
+            
+            $points = isset($data['points']) ? (int)$data['points'] : 0;
+            $query = "INSERT INTO members (name, phone, points, created_at) VALUES (?, ?, ?, datetime('now'))";
             $stmt = $db->prepare($query);
-            $result = $stmt->execute([$data['name'], $data['phone']]);
+            $result = $stmt->execute([$data['name'], $data['phone'], $points]);
             
             if ($result) {
                 echo json_encode(['success' => true, 'id' => $db->lastInsertId()]);
@@ -62,16 +94,82 @@ try {
             $input = file_get_contents("php://input");
             $data = json_decode($input, true);
             
-            $query = "UPDATE members SET points = points + ? WHERE id = ?";
+            if (!isset($data['id'])) {
+                throw new Exception('Member ID is required');
+            }
+            
+            $fields = [];
+            $values = [];
+            
+            if (isset($data['name'])) {
+                $fields[] = "name = ?";
+                $values[] = $data['name'];
+            }
+            
+            if (isset($data['phone'])) {
+                // Check if phone already exists for different member
+                $checkQuery = "SELECT id FROM members WHERE phone = ? AND id != ?";
+                $checkStmt = $db->prepare($checkQuery);
+                $checkStmt->execute([$data['phone'], $data['id']]);
+                if ($checkStmt->fetch()) {
+                    throw new Exception('Nomor telepon sudah terdaftar');
+                }
+                
+                $fields[] = "phone = ?";
+                $values[] = $data['phone'];
+            }
+            
+            if (isset($data['points'])) {
+                $fields[] = "points = ?";
+                $values[] = (int)$data['points'];
+            }
+            
+            if (empty($fields)) {
+                throw new Exception('No data to update');
+            }
+            
+            $values[] = (int)$data['id'];
+            $query = "UPDATE members SET " . implode(', ', $fields) . " WHERE id = ?";
             $stmt = $db->prepare($query);
-            $result = $stmt->execute([$data['points'], $data['id']]);
+            $result = $stmt->execute($values);
             
             if ($result) {
                 echo json_encode(['success' => true]);
             } else {
-                throw new Exception('Failed to update points');
+                throw new Exception('Failed to update member');
             }
             break;
+            
+        case 'DELETE':
+            if (!isset($_GET['id'])) {
+                throw new Exception('Member ID is required');
+            }
+            
+            $id = (int)$_GET['id'];
+            
+            // Check if member has transactions
+            $checkQuery = "SELECT COUNT(*) as count FROM transactions WHERE member_id = ?";
+            $checkStmt = $db->prepare($checkQuery);
+            $checkStmt->execute([$id]);
+            $result = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($result['count'] > 0) {
+                throw new Exception('Cannot delete member with existing transactions');
+            }
+            
+            $query = "DELETE FROM members WHERE id = ?";
+            $stmt = $db->prepare($query);
+            $result = $stmt->execute([$id]);
+            
+            if ($result) {
+                echo json_encode(['success' => true]);
+            } else {
+                throw new Exception('Failed to delete member');
+            }
+            break;
+            
+        default:
+            throw new Exception('Method not allowed');
     }
     
 } catch (Exception $e) {

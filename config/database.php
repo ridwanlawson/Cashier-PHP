@@ -88,7 +88,25 @@ class Database {
                 tax_enabled INTEGER DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )"
+            )",
+            "CREATE TABLE IF NOT EXISTS members (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                phone TEXT UNIQUE NOT NULL,
+                points INTEGER NOT NULL DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS held_transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                items TEXT NOT NULL,
+                member TEXT,
+                payment_method TEXT DEFAULT 'cash',
+                held_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "ALTER TABLE transactions ADD COLUMN cashier_id INTEGER DEFAULT NULL",
+            "ALTER TABLE transactions ADD COLUMN member_id INTEGER DEFAULT NULL",
+            "ALTER TABLE transactions ADD COLUMN payment_method TEXT DEFAULT 'cash'",
+            "ALTER TABLE transaction_items ADD COLUMN discount REAL DEFAULT 0"
         ];
 
         foreach($queries as $query) {

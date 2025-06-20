@@ -13,11 +13,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 try {
-    // Check if user is logged in and is admin
     $auth = new Auth();
-    if (!$auth->isLoggedIn() || $auth->getUser()['role'] !== 'admin') {
+    if (!$auth->isLoggedIn()) {
         http_response_code(401);
         echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+        exit;
+    }
+
+    $user = $auth->getUser();
+
+    // Only admin can manage users
+    if ($user['role'] !== 'admin') {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Access denied']);
         exit;
     }
 
@@ -37,8 +45,8 @@ try {
             $stmt->execute();
             $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            foreach($users as &$user) {
-                $user['id'] = (int)$user['id'];
+            foreach($users as &$userItem) {
+                $userItem['id'] = (int)$userItem['id'];
             }
 
             echo json_encode($users);

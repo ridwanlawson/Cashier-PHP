@@ -6,6 +6,8 @@ let users = [];
 let selectedMember = null;
 let appSettings = {};
 let transactions = [];
+let inventory = [];
+let heldTransactions = [];
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
@@ -879,8 +881,10 @@ function removeFromCart(index) {
 function clearCart() {
     cart = [];
     updateCart();
-    document.getElementById('payment-amount').value = '';
-    document.getElementById('change-amount').textContent = `${appSettings.currency || 'Rp'} 0`;
+    const paymentAmount = document.getElementById('payment-amount');
+    const changeAmount = document.getElementById('change-amount');
+    if (paymentAmount) paymentAmount.value = '';
+    if (changeAmount) changeAmount.textContent = `${appSettings.currency || 'Rp'} 0`;
 }
 
 function calculateChange() {
@@ -935,7 +939,7 @@ async function processTransaction() {
             showAlert(`Produk ${item.name} tidak ditemukan!`, 'danger');
             return;
         }
-        ifcurrentProduct.stock < item.quantity) {
+        if (currentProduct.stock < item.quantity) {
             showAlert(`Stok ${item.name} tidak mencukupi! (Tersedia: ${currentProduct.stock})`, 'warning');
             return;
         }
@@ -2408,19 +2412,42 @@ async function deleteUser(id) {
     }
 }
 
-// Add missing functions to prevent errors
-function loadTransactions() {
-    console.log('Loading transactions...');
+// Transaction functions implementation
+async function loadTransactions() {
+    try {
+        const response = await apiRequest('api/transactions.php');
+        transactions = response || [];
+        displayTransactions();
+    } catch (error) {
+        console.error('Error loading transactions:', error);
+        showAlert('Gagal memuat data transaksi', 'danger');
+    }
 }
 
-function loadInventory() {
-    console.log('Loading inventory...');
-}
-
-function updateCart() {
-    console.log('Updating cart...');
+// Inventory functions implementation  
+async function loadInventory() {
+    try {
+        const response = await apiRequest('api/inventory.php');
+        inventory = response || [];
+        displayInventoryData(inventory);
+    } catch (error) {
+        console.error('Error loading inventory:', error);
+        showAlert('Gagal memuat data inventory', 'danger');
+    }
 }
 
 function populateStockProductSelect() {
-    console.log('Populating stock product select...');
+    const select = document.getElementById('stock-product');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">-- Pilih Produk --</option>';
+
+    if (Array.isArray(products)) {
+        products.forEach(product => {
+            const option = document.createElement('option');
+            option.value = product.id;
+            option.textContent = `${product.name} (Stok: ${product.stock})`;
+            select.appendChild(option);
+        });
+    }
 }

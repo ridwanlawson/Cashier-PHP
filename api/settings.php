@@ -1,4 +1,3 @@
-
 <?php
 // Clean any output buffers and start fresh BEFORE any output
 while (ob_get_level()) {

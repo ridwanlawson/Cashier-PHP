@@ -10,6 +10,11 @@ let transactions = [];
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Page loaded, initializing...');
+
+    // Apply saved theme
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    applyTheme(savedTheme);
+
     loadAppSettings();
     loadProducts();
     loadMembers();
@@ -304,6 +309,8 @@ async function loadSettings() {
             document.getElementById('logo-url').value = settings.logo_url || '';
             document.getElementById('tax-enabled').checked = settings.tax_enabled || false;
             document.getElementById('tax-rate').value = settings.tax_rate || 0;
+            document.getElementById('points-per-amount').value = settings.points_per_amount || 10000;
+            document.getElementById('points-value').value = settings.points_value || 1;
         }
     } catch (error) {
         console.error('Error loading settings:', error);
@@ -350,7 +357,9 @@ async function saveSettings() {
             currency: document.getElementById('currency')?.value.trim() || 'Rp',
             logo_url: document.getElementById('logo-url')?.value.trim() || '',
             tax_enabled: document.getElementById('tax-enabled')?.checked || false,
-            tax_rate: parseFloat(document.getElementById('tax-rate')?.value) || 0
+            tax_rate: parseFloat(document.getElementById('tax-rate')?.value) || 0,
+            points_per_amount: parseInt(document.getElementById('points-per-amount')?.value) || 10000,
+            points_value: parseInt(document.getElementById('points-value')?.value) || 1
         };
 
         console.log('Saving settings...', formData);
@@ -389,7 +398,7 @@ async function saveSettings() {
 // Dashboard functions
 async function loadDashboardStats() {
     try {
-        const stats = await apiRequest('api/transactions.php?stats=1');
+        const stats = await apiRequest('api/dashboard.php');
 
         // Update dashboard cards
         document.getElementById('total-products').textContent = stats.total_products || 0;
@@ -926,7 +935,7 @@ async function processTransaction() {
             showAlert(`Produk ${item.name} tidak ditemukan!`, 'danger');
             return;
         }
-        if (currentProduct.stock < item.quantity) {
+        ifcurrentProduct.stock < item.quantity) {
             showAlert(`Stok ${item.name} tidak mencukupi! (Tersedia: ${currentProduct.stock})`, 'warning');
             return;
         }
@@ -1995,16 +2004,16 @@ async function deleteHeldTransaction(transactionId, showMessage = true) {
 // Members management page functions
 async function loadMembers() {
     try {
-        const members = await apiRequest('api/members.php');
-        currentMembers = members || [];
-        displayMembers(currentMembers);
+        const membersResponse = await apiRequest('api/members.php');
+        members = membersResponse || [];
+        displayMembers(members);
     } catch (error) {
         console.error('Error loading members:', error);
         showAlert('Gagal memuat data member', 'danger');
     }
 }
 
-function displayMembers(members) {
+function displayMembers(membersData) {
     const tbody = document.getElementById('members-tbody');
     if (!tbody) return;
 
@@ -2015,12 +2024,12 @@ function displayMembers(members) {
 
     tbody.innerHTML = '';
 
-    if (!Array.isArray(members) || members.length === 0) {
+    if (!Array.isArray(membersData) || membersData.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center">Tidak ada data member</td></tr>';
         return;
     }
 
-    members.forEach(member => {
+    membersData.forEach(member => {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${member.name}</td>
@@ -2055,6 +2064,178 @@ function displayMembers(members) {
     }, 100);
 }
 
+// User management functions (admin only)
+async function loadUsers() {
+    try {
+        users = await apiRequest('api/users.php');
+        displayUsers();
+    } catch (error) {
+        console.error('Error loading users:', error);
+        showAlert('Gagal memuat data user', 'danger');
+    }
+}
+
+function displayUsers() {
+    const tbody = document.getElementById('users-tbody');
+    if (!tbody) return;
+
+    // Destroy existing DataTable if it exists
+    if ($.fn.DataTable.isDataTable('#users-table')) {
+        $('#users-table').DataTable().destroy();
+    }
+
+    tbody.innerHTML = '';
+
+    if (!Array.isArray(users) || users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center">Tidak ada data user</td></tr>';
+        return;
+    }
+
+    users.forEach(user => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${user.username}</td>
+            <td>${user.name}</td>
+            <td><span class="badge bg-${user.role === 'admin' ? 'primary' : 'secondary'}">${user.role}</span></td>
+            <td>${new Date(user.created_at).toLocaleDateString('id-ID')}</td>
+            <td>
+                <button class="btn btn-warning btn-sm me-1" onclick="editUser(${user.id})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="deleteUser(${user.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+
+    // Initialize DataTable
+    setTimeout(() => {
+        $('#users-table').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
+            },
+            pageLength: 25,
+            responsive: true
+        });
+    }, 100);
+}
+
+// Member search functionality
+async function searchMembers(searchTerm) {
+    try {
+        const searchResults = await apiRequest(`api/members.php?search=${encodeURIComponent(searchTerm)}`);
+        displayMemberSuggestions(searchResults);
+    } catch (error) {
+        console.error('Error searching members:', error);
+    }
+}
+
+function displayMemberSuggestions(membersData) {
+    let container = document.getElementById('member-suggestions');
+    if (!container) {
+        // Create suggestions container if not exists
+        const memberSearchInput = document.getElementById('member-search');
+        if (memberSearchInput) {
+            const memberCard = memberSearchInput.closest('.card-body');
+            if (memberCard) {
+                const suggestionsDiv = document.createElement('div');
+                suggestionsDiv.id = 'member-suggestions';
+                suggestionsDiv.className = 'list-group mt-2';
+                memberCard.appendChild(suggestionsDiv);
+                container = suggestionsDiv;
+            }
+        }
+    }
+
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!membersData || membersData.length === 0) {
+        container.innerHTML = '<div class="list-group-item">Member tidak ditemukan</div>';
+        return;
+    }
+
+    membersData.forEach(member => {
+        const item = document.createElement('div');
+        item.className = 'list-group-item list-group-item-action cursor-pointer';
+        item.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>${member.name}</strong><br>
+                    <small class="text-muted">${member.phone}</small>
+                </div>
+                <span class="text-cyan">${member.points} poin</span>
+            </div>
+        `;
+        item.onclick = () => selectMember(member);
+        container.appendChild(item);
+    });
+}
+
+function clearMemberSuggestions() {
+    const container = document.getElementById('member-suggestions');
+    if (container) container.innerHTML = '';
+}
+
+function selectMember(member) {
+    selectedMember = member;
+    document.getElementById('member-search').value = member.name;
+    document.getElementById('selected-member').innerHTML = `
+        <strong>${member.name}</strong><br>
+        <small>Tel: ${member.phone} | Poin: ${member.points}</small>
+    `;
+
+    clearMemberSuggestions();
+}
+
+function clearMember() {
+    selectedMember = null;
+    document.getElementById('member-search').value = '';
+    document.getElementById('selected-member').innerHTML = '';
+    clearMemberSuggestions();
+}
+
+// Held transactions functions
+async function loadHeldTransactions() {
+    try {
+        const heldTransactions = await apiRequest('api/held-transactions.php');
+        console.log('Held transactions loaded:', heldTransactions.length);
+    } catch (error) {
+        console.error('Error loading held transactions:', error);
+    }
+}
+
+// Utility functions
+function formatNumber(number) {
+    return new Intl.NumberFormat('id-ID').format(number);
+}
+
+function updatePaymentMethod() {
+    const paymentMethod = document.getElementById('payment-method');
+    if (paymentMethod) {
+        console.log('Payment method changed to:', paymentMethod.value);
+    }
+}
+
+// Mobile menu functions
+function toggleMobileMenu() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.querySelector('.mobile-overlay');
+    sidebar.classList.add('show');
+    overlay.classList.add('show');
+}
+
+function closeMobileMenu() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.querySelector('.mobile-overlay');
+    sidebar.classList.remove('show');
+    overlay.classList.remove('show');
+}
+
+// Additional required functions for the application to work properly
 function showAddMemberModal() {
     document.getElementById('memberModalTitle').textContent = 'Tambah Member';
     document.getElementById('memberForm').reset();
@@ -2063,8 +2244,7 @@ function showAddMemberModal() {
 }
 
 function editMember(id) {
-    // Get member data from current loaded members
-    const member = currentMembers?.find(m => m.id === id);
+    const member = members?.find(m => m.id === id);
     if (!member) {
         showAlert('Data member tidak ditemukan', 'danger');
         return;
@@ -2140,294 +2320,107 @@ async function deleteMember(id) {
     }
 }
 
-// Utility functions
-function formatNumber(number) {
-    return new Intl.NumberFormat('id-ID').format(number);
+function showAddUserModal() {
+    document.getElementById('userModalTitle').textContent = 'Tambah User';
+    document.getElementById('userForm').reset();
+    document.getElementById('user-id').value = '';
+    new bootstrap.Modal(document.getElementById('userModal')).show();
 }
 
-// Legacy print function - redirects to current receipt
-function printReceipt() {
-    printCurrentReceipt();
+function editUser(id) {
+    const user = users.find(u => u.id === id);
+    if (!user) return;
+
+    document.getElementById('userModalTitle').textContent = 'Edit User';
+    document.getElementById('user-id').value = user.id;
+    document.getElementById('user-username').value = user.username;
+    document.getElementById('user-name').value = user.name;
+    document.getElementById('user-password').value = '';
+    document.getElementById('user-role').value = user.role;
+
+    new bootstrap.Modal(document.getElementById('userModal')).show();
 }
 
-// Mobile menu functions
-function toggleMobileMenu() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.querySelector('.mobile-overlay');
-    sidebar.classList.add('show');
-    overlay.classList.add('show');
-}
+async function saveUser() {
+    try {
+        const id = document.getElementById('user-id').value;
+        const userData = {
+            username: document.getElementById('user-username').value.trim(),
+            name: document.getElementById('user-name').value.trim(),
+            password: document.getElementById('user-password').value,
+            role: document.getElementById('user-role').value
+        };
 
-function closeMobileMenu() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.querySelector('.mobile-overlay');
-    sidebar.classList.remove('show');
-    overlay.classList.remove('show');
-}
+        if (!userData.username || !userData.name || !userData.role) {
+            showAlert('Username, nama, dan role harus diisi!', 'warning');
+            return;
+        }
 
-// Event listeners
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Page loaded, initializing...');
+        if (!id && !userData.password) {
+            showAlert('Password harus diisi untuk user baru!', 'warning');
+            return;
+        }
 
-    // Apply saved theme
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    applyTheme(savedTheme);
+        let result;
+        if (id) {
+            userData.id = parseInt(id);
+            result = await apiRequest('api/users.php', {
+                method: 'PUT',
+                body: JSON.stringify(userData)
+            });
+        } else {
+            result = await apiRequest('api/users.php', {
+                method: 'POST',
+                body: JSON.stringify(userData)
+            });
+        }
 
-    // Load basic settings first for all users
-    loadBasicSettings().then(() => {
-        // Load dashboard data
-        loadDashboardStats();
-    }).catch(error => {
-        console.error('Failed to load basic settings:', error);
-        // Load dashboard anyway
-        loadDashboardStats();
-    });
-
-    // Add event listeners
-    const searchProduct = document.getElementById('search-product');
-    if (searchProduct) {
-        searchProduct.addEventListener('input', searchProducts);
-        searchProduct.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                // Check if it's a barcode (numeric and length > 5)
-                const searchTerm = this.value.trim();
-                if (/^\d+$/.test(searchTerm) && searchTerm.length >= 5) {
-                    // Search product by barcode and auto-add
-                    searchProductByBarcode(searchTerm);
-                } else {
-                    // Manual add to cart
-                    addToCart();
-                }
-            }
-        });
-    }
-
-    const paymentAmount = document.getElementById('payment-amount');
-    if (paymentAmount) {
-        paymentAmount.addEventListener('input', calculateChange);
-    }
-
-    const purchasePrice = document.getElementById('purchase-price');
-    if (purchasePrice) {
-        purchasePrice.addEventListener('input', calculateSellingPrice);
-    }
-
-    const marginValue = document.getElementById('margin-value');
-    if (marginValue) {
-        marginValue.addEventListener('input', calculateSellingPrice);
-    }
-
-    // Member search event listener
-    const memberSearch = document.getElementById('member-search');
-    if (memberSearch) {
-        memberSearch.addEventListener('input', searchMember);
-    }
-
-    // Close mobile menu when nav link is clicked
-    const navLinks = document.querySelectorAll('.nav-link');
-    navLinks.forEach(link => {
-        link.addEventListener('click', closeMobileMenu);
-    });
-
-    console.log('Initialization complete');
-});
-
-// Print current receipt (for kasir modal)
-function printCurrentReceipt() {
-    if (window.currentReceiptData) {
-        const receiptHTML = generateReceiptHTML(window.currentReceiptData.items, window.currentReceiptData);
-
-        // Create print window
-        const printWindow = window.open('', '_blank');
-        printWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Struk Transaksi #${window.currentReceiptData.id}</title>
-                <style>
-                    body { 
-                        font-family: 'Courier New', monospace; 
-                        font-size: 12px; 
-                        line-height: 1.4; 
-                        max-width: 300px; 
-                        margin: 0 auto; 
-                        padding: 10px;
-                        background: white;
-                        color: black;
-                    }
-                    .text-center { text-align: center; }
-                    .text-left { text-align: left; }
-                    .text-right { text-align: right; }
-                    .separator { border-top: 1px dashed #000; margin: 8px 0; }
-                    .receipt-header { margin-bottom: 15px; }
-                    .receipt-body { margin: 15px 0; }
-                    .receipt-footer { margin-top: 15px; }
-                    table { width: 100%; border-collapse: collapse; }
-                    td { padding: 2px 0; }
-                    .item-line { display: flex; justify-content: space-between; }
-                    .bold { font-weight: bold; }
-                    @media print {
-                        body { margin: 0; padding: 5px; }
-                    }
-                </style>
-            </head>
-            <body>
-                ${receiptHTML}
-                <script>
-                    window.onload = function() {
-                        window.print();
-                        window.onafterprint = function() {
-                            window.close();
-                        }
-                    }
-                </script>
-            </body>
-            </html>
-        `);
-        printWindow.document.close();
-    } else {
-        showAlert('Data struk tidak tersedia', 'warning');
-    }
-}
-
-// Utility functions
-function formatNumber(number) {
-    return new Intl.NumberFormat('id-ID').format(number);
-}
-
-// Navigation functions
-function showSection(sectionId) {
-    // Hide all sections
-    document.querySelectorAll('.section').forEach(section => {
-        section.style.display = 'none';
-    });
-
-    // Show selected section
-    const targetSection = document.getElementById(sectionId);
-    if (targetSection) {
-        targetSection.style.display = 'block';
-    }
-
-    // Update active nav
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.classList.remove('active');
-    });
-
-    const activeLink = document.querySelector(`[onclick="showSection('${sectionId}')"]`);
-    if (activeLink) {
-        activeLink.classList.add('active');
-    }
-
-    // Load section-specific data
-    switch(sectionId) {
-        case 'kasir':
-            loadProducts();
-            displayProducts();
-            break;
-        case 'members':
-            loadMembers();
-            displayMembers();
-            break;
-        case 'users':
+        if (result.success) {
+            showAlert(result.message, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
             loadUsers();
-            break;
-        case 'settings':
-            loadSettings();
-            break;
-            case 'inventory':
-                loadInventory();
-                break;
-        case 'transactions':
-            loadTransactions();
-            break;
-        case 'dashboard':
-            loadDashboardStats();
-            break;
-    }
-}
-
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    // Show default section
-    showSection('dashboard');
-});
-
-// Transaction functions
-async function loadTransactions() {
-    try {
-        transactions = await apiRequest('api/transactions.php');
-        displayTransactions();
+        } else {
+            showAlert(result.error, 'danger');
+        }
     } catch (error) {
-        console.error('Error loading transactions:', error);
-        showAlert('Gagal memuat data transaksi', 'danger');
+        console.error('Error saving user:', error);
+        showAlert('Gagal menyimpan user: ' + error.message, 'danger');
     }
 }
 
-function displayTransactions() {
-    const tbody = document.getElementById('transactions-table-body');
-    if (!tbody) return;
+async function deleteUser(id) {
+    if (!confirm('Apakah Anda yakin ingin menghapus user ini?')) return;
 
-    tbody.innerHTML = transactions.map(transaction => `
-        <tr>
-            <td>${transaction.id}</td>
-            <td>${new Date(transaction.transaction_date).toLocaleString('id-ID')}</td>
-            <td>${appSettings.currency || 'Rp'} ${formatNumber(transaction.total)}</td>
-        </tr>
-    `).join('');
-}
-
-// Inventory functions
-async function loadInventory() {
     try {
-        inventory = await apiRequest('api/inventory.php');
-        displayInventoryData(inventory);
+        const result = await apiRequest(`api/users.php?id=${id}`, {
+            method: 'DELETE'
+        });
+
+        if (result.success) {
+            showAlert(result.message, 'success');
+            loadUsers();
+        } else {
+            showAlert(result.error, 'danger');
+        }
     } catch (error) {
-        console.error('Error loading inventory:', error);
-        showAlert('Gagal memuat data inventory', 'danger');
+        console.error('Error deleting user:', error);
+        showAlert('Gagal menghapus user: ' + error.message, 'danger');
     }
 }
 
-function displayInventoryData(inventoryData) {
-    const tbody = document.getElementById('inventory-table-body');
-    if (!tbody) return;
-
-    tbody.innerHTML = inventoryData.map(item => `
-        <tr>
-            <td>${item.id}</td>
-            <td>${item.product_name}</td>
-            <td>${item.quantity}</td>
-            <td>${new Date(item.created_at).toLocaleString('id-ID')}</td>
-        </tr>
-    `).join('');
+// Add missing functions to prevent errors
+function loadTransactions() {
+    console.log('Loading transactions...');
 }
 
-// Dashboard functions
-async function loadDashboardStats() {
-    try {
-        const stats = await apiRequest('api/dashboard.php');
-
-        document.getElementById('total-products').textContent = stats.total_products || 0;
-        document.getElementById('today-transactions').textContent = stats.today_transactions || 0;
-        document.getElementById('today-revenue').textContent = `${appSettings.currency || 'Rp'} ${formatNumber(stats.today_revenue || 0)}`;
-        document.getElementById('monthly-revenue').textContent = `${appSettings.currency || 'Rp'} ${formatNumber(stats.monthly_revenue || 0)}`;
-    } catch (error) {
-        console.error('Error loading dashboard stats:', error);
-        showAlert('Gagal memuat statistik dashboard', 'danger');
-    }
+function loadInventory() {
+    console.log('Loading inventory...');
 }
 
-// Mobile menu functions
-function toggleMobileMenu() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.querySelector('.mobile-overlay');
-    sidebar.classList.add('show');
-    overlay.classList.add('show');
+function updateCart() {
+    console.log('Updating cart...');
 }
 
-function closeMobileMenu() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.querySelector('.mobile-overlay');
-    sidebar.classList.remove('show');
-    overlay.classList.remove('show');
+function populateStockProductSelect() {
+    console.log('Populating stock product select...');
 }

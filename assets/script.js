@@ -1,4 +1,3 @@
-
 // Global variables
 let cart = [];
 let products = [];

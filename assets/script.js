@@ -1112,30 +1112,31 @@ function showReceipt(transactionId, cartItems, total, payment) {
     };
 
     let receiptHTML = `
-        <div class="text-center mb-3" style="color: var(--text-primary) !important;">
-            ${appSettings.receipt_header ? `<div><small>${appSettings.receipt_header}</small></div>` : ''}
-            <h6>${appSettings.store_name || 'Toko ABC'}</h6>
-            ${appSettings.store_address ? `<small>${appSettings.store_address}</small><br>` : ''}
-            ${appSettings.store_phone ? `<small>Tel: ${appSettings.store_phone}</small><br>` : ''}
-            ${appSettings.store_email ? `<small>Email: ${appSettings.store_email}</small><br>` : ''}
-            ${appSettings.store_website ? `<small>Web: ${appSettings.store_website}</small><br>` : ''}
-            ${appSettings.store_social_media ? `<small>Social: ${appSettings.store_social_media}</small><br>` : ''}
+        <div class="text-center mb-3">
+            ${appSettings.receipt_header ? `<div><strong>${appSettings.receipt_header}</strong></div>` : ''}
+            <h5 class="mb-2">${appSettings.store_name || 'Toko ABC'}</h5>
+            ${appSettings.store_address ? `<div class="small">${appSettings.store_address}</div>` : ''}
+            ${appSettings.store_phone ? `<div class="small">Tel: ${appSettings.store_phone}</div>` : ''}
+            ${appSettings.store_email ? `<div class="small">Email: ${appSettings.store_email}</div>` : ''}
+            ${appSettings.store_website ? `<div class="small">Web: ${appSettings.store_website}</div>` : ''}
+            ${appSettings.store_social_media ? `<div class="small">Social: ${appSettings.store_social_media}</div>` : ''}
         </div>
-        <div class="border-top border-bottom py-2 mb-2" style="color: var(--text-primary) !important;">
+        <div class="border-top border-bottom py-2 mb-3">
             <div class="row">
                 <div class="col-6"><strong>Transaksi #${transactionId}</strong></div>
                 <div class="col-6 text-end"><small>${new Date().toLocaleString('id-ID')}</small></div>
             </div>
         </div>
-        <table class="table table-sm" style="color: var(--text-primary) !important;">
+        <table class="table table-sm table-borderless">
+            <tbody>
     `;
 
     cartItems.forEach(item => {
         receiptHTML += `
-            <tr style="color: var(--text-primary) !important;">
-                <td style="color: var(--text-primary) !important;">${item.name}</td>
-                <td class="text-end" style="color: var(--text-primary) !important;">${item.quantity} x ${formatNumber(item.price)}</td>
-                <td class="text-end" style="color: var(--text-primary) !important;">${formatNumber(item.subtotal)}</td>
+            <tr>
+                <td class="p-1">${item.name}</td>
+                <td class="text-end p-1">${item.quantity} x ${appSettings.currency || 'Rp'} ${formatNumber(item.price)}</td>
+                <td class="text-end p-1">${appSettings.currency || 'Rp'} ${formatNumber(item.subtotal)}</td>
             </tr>
         `;
     });
@@ -1146,41 +1147,43 @@ function showReceipt(transactionId, cartItems, total, payment) {
     const taxAmount = taxEnabled && taxRate > 0 ? subtotal * (taxRate / 100) : 0;
 
     receiptHTML += `
+            </tbody>
         </table>
-        <div class="border-top pt-2" style="color: var(--text-primary) !important;">
-            <div class="row">
-                <div class="col-6" style="color: var(--text-primary) !important;">Subtotal:</div>
-                <div class="col-6 text-end" style="color: var(--text-primary) !important;">${appSettings.currency || 'Rp'} ${formatNumber(subtotal)}</div>
+        <div class="border-top pt-3">
+            <div class="row mb-1">
+                <div class="col-6">Subtotal:</div>
+                <div class="col-6 text-end">${appSettings.currency || 'Rp'} ${formatNumber(subtotal)}</div>
             </div>
     `;
 
     // Only show tax if enabled and has value
     if (taxEnabled && taxRate > 0 && taxAmount > 0) {
         receiptHTML += `
-            <div class="row">
-                <div class="col-6" style="color: var(--text-primary) !important;">Pajak (${taxRate}%):</div>
-                <div class="col-6 text-end" style="color: var(--text-primary) !important;">${appSettings.currency || 'Rp'} ${formatNumber(taxAmount)}</div>
+            <div class="row mb-1">
+                <div class="col-6">Pajak (${taxRate}%):</div>
+                <div class="col-6 text-end">${appSettings.currency || 'Rp'} ${formatNumber(taxAmount)}</div>
             </div>
         `;
     }
 
     receiptHTML += `
-        <div class="row">
-            <div class="col-6" style="color: var(--text-primary) !important;"><strong>Total:</strong></div>
-            <div class="col-6 text-end" style="color: var(--text-primary) !important;"><strong>${appSettings.currency || 'Rp'} ${formatNumber(total)}</strong></div>
+            <div class="row mb-2 border-top pt-2">
+                <div class="col-6"><strong>Total:</strong></div>
+                <div class="col-6 text-end"><strong>${appSettings.currency || 'Rp'} ${formatNumber(total)}</strong></div>
+            </div>
+            <div class="row mb-1">
+                <div class="col-6">Bayar:</div>
+                <div class="col-6 text-end">${appSettings.currency || 'Rp'} ${formatNumber(payment)}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-6">Kembalian:</div>
+                <div class="col-6 text-end">${appSettings.currency || 'Rp'} ${formatNumber(change)}</div>
+            </div>
         </div>
-        <div class="row">
-            <div class="col-6" style="color: var(--text-primary) !important;">Bayar:</div>
-            <div class="col-6 text-end" style="color: var(--text-primary) !important;">${appSettings.currency || 'Rp'} ${formatNumber(payment)}</div>
+        <div class="text-center mt-3 border-top pt-3">
+            <div class="small text-muted">${appSettings.receipt_footer || 'Terima kasih atas kunjungan Anda'}</div>
+            <div class="small text-muted mt-1">Powered by ${appSettings.app_name || 'Kasir Digital'}</div>
         </div>
-        <div class="row">
-            <div class="col-6" style="color: var(--text-primary) !important;">Kembalian:</div>
-            <div class="col-6 text-end" style="color: var(--text-primary) !important;">${appSettings.currency || 'Rp'} ${formatNumber(change)}</div>
-        </div>
-    </div>
-    <div class="text-center mt-3" style="color: var(--text-primary) !important;">
-        <small>${appSettings.receipt_footer || 'Terima kasih atas kunjungan Anda'}</small>
-    </div>
     `;
 
     // Show receipt in modal
@@ -1279,17 +1282,17 @@ async function viewTransactionDetail(transactionId) {
         }
 
         let tableHTML = `
-            <div class="mb-3" style="color: var(--text-primary) !important;">
+            <div class="mb-3">
                 <h6>Transaksi #${transaction.id}</h6>
                 <p class="text-muted">${new Date(transaction.transaction_date).toLocaleString('id-ID')}</p>
             </div>
-            <table class="table" style="color: var(--text-primary) !important;">
+            <table class="table">
                 <thead>
-                    <tr style="color: var(--text-primary) !important;">
-                        <th style="color: var(--text-primary) !important;">Produk</th>
-                        <th style="color: var(--text-primary) !important;">Qty</th>
-                        <th style="color: var(--text-primary) !important;">Harga</th>
-                        <th style="color: var(--text-primary) !important;">Subtotal</th>
+                    <tr>
+                        <th>Produk</th>
+                        <th>Qty</th>
+                        <th>Harga</th>
+                        <th>Subtotal</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1297,22 +1300,44 @@ async function viewTransactionDetail(transactionId) {
 
         transaction.items.forEach(item => {
             tableHTML += `
-                <tr style="color: var(--text-primary) !important;">
-                    <td style="color: var(--text-primary) !important;">${item.product_name}</td>
-                    <td style="color: var(--text-primary) !important;">${item.quantity}</td>
-                    <td style="color: var(--text-primary) !important;">${appSettings.currency || 'Rp'} ${formatNumber(item.price)}</td>
-                    <td style="color: var(--text-primary) !important;">${appSettings.currency || 'Rp'} ${formatNumber(item.subtotal)}</td>
+                <tr>
+                    <td>${item.product_name}</td>
+                    <td>${item.quantity}</td>
+                    <td>${appSettings.currency || 'Rp'} ${formatNumber(item.price)}</td>
+                    <td>${appSettings.currency || 'Rp'} ${formatNumber(item.subtotal)}</td>
                 </tr>
             `;
         });
 
+        const subtotal = transaction.items.reduce((sum, item) => sum + item.subtotal, 0);
+        const taxEnabled = appSettings.tax_enabled === true || appSettings.tax_enabled === 1;
+        const taxRate = parseFloat(appSettings.tax_rate) || 0;
+        const taxAmount = taxEnabled && taxRate > 0 ? subtotal * (taxRate / 100) : 0;
+
         tableHTML += `
                 </tbody>
             </table>
-            <div class="border-top pt-2" style="color: var(--text-primary) !important;">
+            <div class="border-top pt-2">
                 <div class="row">
-                    <div class="col-6" style="color: var(--text-primary) !important;"><strong>Total:</strong></div>
-                    <div class="col-6 text-end" style="color: var(--text-primary) !important;"><strong>${appSettings.currency || 'Rp'} ${formatNumber(transaction.total)}</strong></div>
+                    <div class="col-6">Subtotal:</div>
+                    <div class="col-6 text-end">${appSettings.currency || 'Rp'} ${formatNumber(subtotal)}</div>
+                </div>
+        `;
+
+        // Only show tax if enabled and has value
+        if (taxEnabled && taxRate > 0 && taxAmount > 0) {
+            tableHTML += `
+                <div class="row">
+                    <div class="col-6">Pajak (${taxRate}%):</div>
+                    <div class="col-6 text-end">${appSettings.currency || 'Rp'} ${formatNumber(taxAmount)}</div>
+                </div>
+            `;
+        }
+
+        tableHTML += `
+                <div class="row">
+                    <div class="col-6"><strong>Total:</strong></div>
+                    <div class="col-6 text-end"><strong>${appSettings.currency || 'Rp'} ${formatNumber(transaction.total)}</strong></div>
                 </div>
             </div>
         `;
@@ -1421,22 +1446,22 @@ function generateReceiptHTML(cartItems, transactionData = null) {
     let receiptHTML = `
         <div class="text-center receipt-header">
             ${appSettings.receipt_header ? `<div class="bold">${appSettings.receipt_header}</div>` : ''}
-            <div class="bold" style="font-size: 14px;">${appSettings.store_name || 'Toko ABC'}</div>
-            <div>${appSettings.store_address || 'Alamat Toko'}</div>
-            <div>Tel: ${appSettings.store_phone || '021-12345678'}</div>
-            ${appSettings.store_email ? `<div>Email: ${appSettings.store_email}</div>` : ''}
-            ${appSettings.store_website ? `<div>Web: ${appSettings.store_website}</div>` : ''}
-            ${appSettings.store_social_media ? `<div>Social: ${appSettings.store_social_media}</div>` : ''}
+            <div class="bold" style="font-size: 16px; margin: 8px 0;">${appSettings.store_name || 'Toko ABC'}</div>
+            ${appSettings.store_address ? `<div style="margin: 2px 0;">${appSettings.store_address}</div>` : ''}
+            ${appSettings.store_phone ? `<div style="margin: 2px 0;">Tel: ${appSettings.store_phone}</div>` : ''}
+            ${appSettings.store_email ? `<div style="margin: 2px 0;">Email: ${appSettings.store_email}</div>` : ''}
+            ${appSettings.store_website ? `<div style="margin: 2px 0;">Web: ${appSettings.store_website}</div>` : ''}
+            ${appSettings.store_social_media ? `<div style="margin: 2px 0;">Social: ${appSettings.store_social_media}</div>` : ''}
         </div>
 
         <div class="separator"></div>
 
         <div class="receipt-body">
-            <div style="display: flex; justify-content: space-between;">
+            <div style="display: flex; justify-content: space-between; margin: 5px 0;">
                 <span>Tanggal:</span>
                 <span>${currentDate.toLocaleString('id-ID')}</span>
             </div>
-            ${transactionData ? `<div style="display: flex; justify-content: space-between;">
+            ${transactionData ? `<div style="display: flex; justify-content: space-between; margin: 5px 0;">
                 <span>No. Transaksi:</span>
                 <span>#${transactionData.id}</span>
             </div>` : ''}
@@ -1452,11 +1477,11 @@ function generateReceiptHTML(cartItems, transactionData = null) {
         const subtotal = item.subtotal;
 
         receiptHTML += `
-            <div style="margin: 5px 0;">
-                <div>${itemName}</div>
+            <div style="margin: 8px 0; padding: 2px 0;">
+                <div style="font-weight: bold; margin-bottom: 2px;">${itemName}</div>
                 <div style="display: flex; justify-content: space-between;">
                     <span>${qty} x ${appSettings.currency || 'Rp'} ${formatNumber(price)}</span>
-                    <span>${appSettings.currency || 'Rp'} ${formatNumber(subtotal)}</span>
+                    <span class="bold">${appSettings.currency || 'Rp'} ${formatNumber(subtotal)}</span>
                 </div>
             </div>
         `;
@@ -1471,7 +1496,7 @@ function generateReceiptHTML(cartItems, transactionData = null) {
         <div class="separator"></div>
 
         <div style="margin: 10px 0;">
-            <div style="display: flex; justify-content: space-between;">
+            <div style="display: flex; justify-content: space-between; margin: 5px 0;">
                 <span>Subtotal:</span>
                 <span>${appSettings.currency || 'Rp'} ${formatNumber(subtotal)}</span>
             </div>
@@ -1480,7 +1505,7 @@ function generateReceiptHTML(cartItems, transactionData = null) {
     // Only show tax if enabled and has value
     if (taxEnabled && taxRate > 0 && taxAmount > 0) {
         receiptHTML += `
-            <div style="display: flex; justify-content: space-between;">
+            <div style="display: flex; justify-content: space-between; margin: 5px 0;">
                 <span>Pajak (${taxRate}%):</span>
                 <span>${appSettings.currency || 'Rp'} ${formatNumber(taxAmount)}</span>
             </div>
@@ -1490,23 +1515,21 @@ function generateReceiptHTML(cartItems, transactionData = null) {
     const total = transactionData ? transactionData.total : (subtotal + taxAmount);
 
     receiptHTML += `
-        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; margin-top: 5px; padding-top: 5px; border-top: 1px solid #000;">
-            <span>TOTAL:</span>
-            <span>${appSettings.currency || 'Rp'} ${formatNumber(total)}</span>
+            <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; margin: 8px 0; padding: 8px 0; border-top: 1px solid #000; border-bottom: 1px solid #000;">
+                <span>TOTAL:</span>
+                <span>${appSettings.currency || 'Rp'} ${formatNumber(total)}</span>
+            </div>
         </div>
-    </div>
 
-    <div class="separator"></div>
-
-    <div class="text-center receipt-footer">
-        <div style="margin: 10px 0;">
-            ${appSettings.receipt_footer || 'Terima kasih atas kunjungan Anda'}
+        <div class="text-center receipt-footer" style="margin-top: 15px;">
+            <div style="margin: 8px 0; font-style: italic;">
+                ${appSettings.receipt_footer || 'Terima kasih atas kunjungan Anda'}
+            </div>
+            <div style="font-size: 10px; margin-top: 10px;">
+                Powered by ${appSettings.app_name || 'Kasir Digital'}
+            </div>
         </div>
-        <div style="font-size: 10px;">
-            Powered by ${appSettings.app_name || 'Kasir Digital'}
-        </div>
-    </div>
-`;
+    `;
 
     return receiptHTML;
 }

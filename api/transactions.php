@@ -200,6 +200,7 @@ try {
                 $cashierId = $data['cashier_id'] ?? null;
                 $memberId = $data['member_id'] ?? null;
                 $paymentMethod = $data['payment_method'] ?? 'cash';
+                $earnedPoints = $data['earned_points'] ?? 0;
                 
                 $query = "INSERT INTO transactions (subtotal, tax_amount, total, cashier_id, member_id, payment_method, transaction_date) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))";
                 $stmt = $db->prepare($query);
@@ -263,9 +264,19 @@ try {
                     ]);
                 }
 
+                // Update member points if member is selected and points earned
+                if ($memberId && $earnedPoints > 0) {
+                    $query = "UPDATE members SET points = points + ? WHERE id = ?";
+                    $stmt = $db->prepare($query);
+                    $stmt->execute([(int)$earnedPoints, (int)$memberId]);
+                    
+                    // Log points earned for audit trail
+                    error_log("Member ID {$memberId} earned {$earnedPoints} points from transaction {$transaction_id}");
+                }
+
                 $db->commit();
                 ob_clean();
-                echo json_encode(['success' => true, 'transaction_id' => (int)$transaction_id]);
+                echo json_encode(['success' => true, 'transaction_id' => (int)$transaction_id, 'earned_points' => (int)$earnedPoints]);
 
             } catch(Exception $e) {
                 $db->rollback();

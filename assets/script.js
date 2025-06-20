@@ -1038,6 +1038,7 @@ async function processTransaction() {
     const total = subtotal + taxAmount;
     const paymentInput = document.getElementById('payment-amount');
     const payment = parseFloat(paymentInput ? paymentInput.value : 0) || 0;
+    const paymentMethod = document.getElementById('payment-method')?.value || 'cash';
 
     if (payment < total) {
         showAlert('Jumlah pembayaran kurang!', 'warning');
@@ -1058,12 +1059,26 @@ async function processTransaction() {
     }
 
     try {
-        console.log('Processing transaction:', { total, items_count: cart.length });
+        console.log('Processing transaction:', { total, items_count: cart.length, member: selectedMember });
+
+        // Calculate member points if member selected
+        let earnedPoints = 0;
+        if (selectedMember && appSettings.points_per_amount && appSettings.points_value) {
+            const pointsPerAmount = parseInt(appSettings.points_per_amount) || 10000;
+            const pointsValue = parseInt(appSettings.points_value) || 1;
+            
+            // Calculate points: (total / points_per_amount) * points_value
+            earnedPoints = Math.floor(total / pointsPerAmount) * pointsValue;
+            console.log('Points calculation:', { total, pointsPerAmount, pointsValue, earnedPoints });
+        }
 
         const transactionData = {
             subtotal: subtotal,
             tax_amount: taxAmount,
             total: total,
+            payment_method: paymentMethod,
+            member_id: selectedMember ? selectedMember.id : null,
+            earned_points: earnedPoints,
             items: cart.map(item => ({
                 product_id: item.product_id,
                 quantity: item.quantity,
@@ -1078,16 +1093,34 @@ async function processTransaction() {
         });
 
         if (result.success) {
-            showAlert('Transaksi berhasil!', 'success');
+            let message = 'Transaksi berhasil!';
+            
+            // Show points earned message
+            if (selectedMember && earnedPoints > 0) {
+                message += ` ${selectedMember.name} mendapat ${earnedPoints} poin!`;
+                
+                // Update local member data
+                selectedMember.points += earnedPoints;
+                
+                // Update selected member display
+                document.getElementById('selected-member').innerHTML = `
+                    <strong>${selectedMember.name}</strong><br>
+                    <small>Tel: ${selectedMember.phone} | Poin: ${selectedMember.points}</small>
+                `;
+            }
+            
+            showAlert(message, 'success');
 
             // Show receipt
-            showReceipt(result.transaction_id, cart, total, payment);
+            showReceipt(result.transaction_id, cart, total, payment, selectedMember, earnedPoints);
 
-            // Clear cart
+            // Clear cart and member selection
             clearCart();
+            clearMember();
 
-            // Reload products to update stock
+            // Reload products to update stock and reload members to update points
             loadProducts();
+            loadMembers();
 
         } else {
             showAlert('Gagal memproses transaksi: ' + result.error, 'danger');
@@ -1098,7 +1131,7 @@ async function processTransaction() {
     }
 }
 
-function showReceipt(transactionId, cartItems, total, payment) {
+function showReceipt(transactionId, cartItems, total, payment, member = null, earnedPoints = 0) {
     const change = payment - total;
 
     // Store current receipt data for printing
@@ -1108,6 +1141,8 @@ function showReceipt(transactionId, cartItems, total, payment) {
         total: total,
         payment: payment,
         change: change,
+        member: member,
+        earned_points: earnedPoints,
         transaction_date: new Date().toISOString()
     };
 
@@ -1126,6 +1161,13 @@ function showReceipt(transactionId, cartItems, total, payment) {
                 <div class="col-6"><strong>Transaksi #${transactionId}</strong></div>
                 <div class="col-6 text-end"><small>${new Date().toLocaleString('id-ID')}</small></div>
             </div>
+            ${member ? `
+            <div class="row mt-2">
+                <div class="col-12">
+                    <small><strong>Member:</strong> ${member.name} (${member.phone})</small>
+                </div>
+            </div>
+            ` : ''}
         </div>
         <table class="table table-sm table-borderless">
             <tbody>
@@ -1179,6 +1221,16 @@ function showReceipt(transactionId, cartItems, total, payment) {
                 <div class="col-6">Kembalian:</div>
                 <div class="col-6 text-end">${appSettings.currency || 'Rp'} ${formatNumber(change)}</div>
             </div>
+            ${member && earnedPoints > 0 ? `
+            <div class="row mb-2 border-top pt-2">
+                <div class="col-12 text-center">
+                    <div class="alert alert-success mb-0 py-2">
+                        <small><strong>🎉 Poin Didapat: ${earnedPoints}</strong></small><br>
+                        <small>Total Poin: ${member.points + earnedPoints}</small>
+                    </div>
+                </div>
+            </div>
+            ` : ''}
         </div>
         <div class="text-center mt-3 border-top pt-3">
             <div class="small text-muted">${appSettings.receipt_footer || 'Terima kasih atas kunjungan Anda'}</div>
@@ -1520,6 +1572,8 @@ function printCurrentTransactionReceipt() {
 
 function generateReceiptHTML(cartItems, transactionData = null) {
     const currentDate = transactionData ? new Date(transactionData.transaction_date) : new Date();
+    const member = transactionData?.member || window.currentReceiptData?.member;
+    const earnedPoints = transactionData?.earned_points || window.currentReceiptData?.earned_points || 0;
 
     let receiptHTML = `
         <div class="text-center receipt-header">
@@ -1542,6 +1596,10 @@ function generateReceiptHTML(cartItems, transactionData = null) {
             ${transactionData ? `<div style="display: flex; justify-content: space-between; margin: 5px 0;">
                 <span>No. Transaksi:</span>
                 <span>#${transactionData.id}</span>
+            </div>` : ''}
+            ${member ? `<div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                <span>Member:</span>
+                <span>${member.name}</span>
             </div>` : ''}
         </div>
 
@@ -1600,6 +1658,12 @@ function generateReceiptHTML(cartItems, transactionData = null) {
         </div>
 
         <div class="text-center receipt-footer" style="margin-top: 15px;">
+            ${member && earnedPoints > 0 ? `
+            <div style="margin: 10px 0; padding: 8px; border: 1px solid #000; font-weight: bold;">
+                <div>POIN DIDAPAT: ${earnedPoints}</div>
+                <div style="font-size: 12px;">Total Poin: ${member.points + earnedPoints}</div>
+            </div>
+            ` : ''}
             <div style="margin: 8px 0; font-style: italic;">
                 ${appSettings.receipt_footer || 'Terima kasih atas kunjungan Anda'}
             </div>

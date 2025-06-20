@@ -1,0 +1,50 @@
+Invalid JSON response from server
+at t.value (https://eca83aca-a9f2-451c-a77a-e70bf30f708f-00-29pegnsi7s7ub.pike.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:17465)
+at new t (https://eca83aca-a9f2-451c-a77a-e70bf30f708f-00-29pegnsi7s7ub.pike.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12630)
+at t.value (https://eca83aca-a9f2-451c-a77a-e70bf30f708f-00-29pegnsi7s7ub.pike.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32766)
+at https://eca83aca-a9f2-451c-a77a-e70bf30f708f-00-29pegnsi7s7ub.pike.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34400
+Error loading members: 
+Error {}
+
+at t.value (https://eca83aca-a9f2-451c-a77a-e70bf30f708f-00-29pegnsi7s7ub.pike.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:17465)
+at new t (https://eca83aca-a9f2-451c-a77a-e70bf30f708f-00-29pegnsi7s7ub.pike.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12630)
+at t.value (https://eca83aca-a9f2-451c-a77a-e70bf30f708f-00-29pegnsi7s7ub.pike.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32766)
+at https://eca83aca-a9f2-451c-a77a-e70bf30f708f-00-29pegnsi7s7ub.pike.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34400
+Loading app settings...
+API request failed: 
+SyntaxError {}
+message: "Unexpected token 'C', "Connection"... is not valid JSON"
+stack: "SyntaxError: Unexpected token 'C', "Connection"... is not valid JSON"
+get stack: ƒ ()
+set stack: ƒ ()
+[[Prototype]]: Object
+
+Invalid JSON response from server
+Error loading settings: 
+Error {}
+
+at t.value (https://eca83aca-a9f2-451c-a77a-e70bf30f708f-00-29pegnsi7s7ub.pike.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:17465)
+at new t (https://eca83aca-a9f2-451c-a77a-e70bf30f708f-00-29pegnsi7s7ub.pike.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12630)
+at t.value (https://eca83aca-a9f2-451c-a77a-e70bf30f708f-00-29pegnsi7s7ub.pike.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32766)
+at https://eca83aca-a9f2-451c-a77a-e70bf30f708f-00-29pegnsi7s7ub.pike.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34400
+API request failed: 
+SyntaxError {}
+message: "Unexpected token 'C', "Connection"... is not valid JSON"
+stack: "SyntaxError: Unexpected token 'C', "Connection"... is not valid JSON"
+get stack: ƒ ()
+set stack: ƒ ()
+[[Prototype]]: Object
+
+Invalid JSON response from server
+Error loading users: 
+Error {}
+message: "Invalid server response"
+stack: "Error: Invalid server response↵ at apiRequest (https://eca83aca-a9f2-451c-a77a-e70bf30f708f-00-29pegnsi7s7ub.pike.replit.dev/assets/script.js:32:19)↵ at async loadUsers (https://eca83aca-a9f2-451c-a77a-e70bf30f708f-00-29pegnsi7s7ub.pike.replit.dev/assets/script.js:1406:17)"
+get stack: ƒ ()
+set stack: ƒ ()
+[[Prototype]]: Object
+
+at t.value (https://eca83aca-a9f2-451c-a77a-e70bf30f708f-00-29pegnsi7s7ub.pike.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:17465)
+at new t (https://eca83aca-a9f2-451c-a77a-e70bf30f708f-00-29pegnsi7s7ub.pike.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12630)
+at t.value (https://eca83aca-a9f2-451c-a77a-e70bf30f708f-00-29pegnsi7s7ub.pike.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32766)
+at https://eca83aca-a9f2-451c-a77a-e70bf30f708f-00-29pegnsi7s7ub.pike.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34400

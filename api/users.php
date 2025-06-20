@@ -1,8 +1,19 @@
+
 <?php
-session_start();
+// Ensure no output before this point
+if (ob_get_level()) {
+    ob_end_clean();
+}
+
+// Start session only if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once '../auth.php';
 require_once '../config/database.php';
 
+// Set headers after session is started
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');

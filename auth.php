@@ -19,13 +19,13 @@ class Auth {
             $database = new Database();
             $db = $database->getConnection();
 
-            // Note: In production, use password_hash() and password_verify()
-            $query = "SELECT * FROM users WHERE username = ? AND password = ?";
+            // Get user by username only
+            $query = "SELECT * FROM users WHERE username = ?";
             $stmt = $db->prepare($query);
-            $stmt->execute([trim($username), $password]);
+            $stmt->execute([trim($username)]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($user) {
+            if ($user && password_verify($password, $user['password'])) {
                 // Regenerate session ID for security
                 session_regenerate_id(true);
 

@@ -1,28 +1,31 @@
+
 <?php
-// Clean any existing output and start session properly
+// Ensure no output before this point
 if (ob_get_level()) {
     ob_end_clean();
 }
 
-// Start session before any output
+// Start session only if not already started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Set headers before any output
-header('Content-Type: application/json');
-header('Cache-Control: no-cache, must-revalidate');
-
-require_once '../config/database.php';
 require_once '../auth.php';
+require_once '../config/database.php';
 
-$auth = new Auth();
-$auth->requireLogin();
+// Set headers after session is started
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
 
-$user = $auth->getUser();
-$method = $_SERVER['REQUEST_METHOD'];
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
+}
 
 try {
+    $auth = new Auth();
+    
     $database = new Database();
     $db = $database->getConnection();
 
@@ -30,10 +33,12 @@ try {
         throw new Exception('Database connection failed');
     }
 
+    $method = $_SERVER['REQUEST_METHOD'];
+
     switch($method) {
         case 'GET':
-            // Get settings - allow all authenticated users to read settings
-            $query = "SELECT * FROM app_settings LIMIT 1";
+            // Get app settings
+            $query = "SELECT * FROM app_settings ORDER BY id DESC LIMIT 1";
             $stmt = $db->prepare($query);
             $stmt->execute();
             $settings = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -58,7 +63,7 @@ try {
                     'points_value' => 1
                 ];
             } else {
-                // Convert string booleans to actual booleans
+                // Convert string to boolean for tax_enabled
                 $settings['tax_enabled'] = (bool)$settings['tax_enabled'];
                 $settings['tax_rate'] = (float)$settings['tax_rate'];
                 $settings['points_per_amount'] = (int)$settings['points_per_amount'];
@@ -69,9 +74,18 @@ try {
             break;
 
         case 'POST':
-            // Only admin can modify settings
+            // Check authentication for saving settings
+            if (!$auth->isLoggedIn()) {
+                http_response_code(401);
+                echo json_encode(['success' => false, 'error' => 'Authentication required']);
+                exit;
+            }
+
+            $user = $auth->getUser();
             if ($user['role'] !== 'admin') {
-                throw new Exception('Access denied. Admin role required.');
+                http_response_code(403);
+                echo json_encode(['success' => false, 'error' => 'Access denied. Admin role required.']);
+                exit;
             }
 
             $input = file_get_contents("php://input");
@@ -84,78 +98,54 @@ try {
                 throw new Exception('Invalid JSON data: ' . json_last_error_msg());
             }
 
-            // Validate required fields
-            if (empty($data['app_name']) || empty($data['store_name']) || empty($data['receipt_footer'])) {
-                throw new Exception('App name, store name, and receipt footer are required');
-            }
-
             // Check if settings exist
-            $checkQuery = "SELECT id FROM app_settings LIMIT 1";
-            $checkStmt = $db->prepare($checkQuery);
-            $checkStmt->execute();
-            $existingSettings = $checkStmt->fetch();
+            $query = "SELECT COUNT(*) FROM app_settings";
+            $stmt = $db->prepare($query);
+            $stmt->execute();
+            $count = $stmt->fetchColumn();
 
-            if ($existingSettings) {
+            if ($count > 0) {
                 // Update existing settings
-                $updateQuery = "UPDATE app_settings SET 
+                $query = "UPDATE app_settings SET 
                     app_name = ?, store_name = ?, store_address = ?, store_phone = ?, 
-                    store_email = ?, store_website = ?, store_social_media = ?, 
-                    receipt_header = ?, receipt_footer = ?, currency = ?, logo_url = ?, 
+                    store_email = ?, store_website = ?, store_social_media = ?,
+                    receipt_header = ?, receipt_footer = ?, currency = ?, logo_url = ?,
                     tax_enabled = ?, tax_rate = ?, points_per_amount = ?, points_value = ?,
-                    updated_at = CURRENT_TIMESTAMP 
-                    WHERE id = ?";
-
-                $stmt = $db->prepare($updateQuery);
-                $result = $stmt->execute([
-                    $data['app_name'],
-                    $data['store_name'],
-                    $data['store_address'] ?? '',
-                    $data['store_phone'] ?? '',
-                    $data['store_email'] ?? '',
-                    $data['store_website'] ?? '',
-                    $data['store_social_media'] ?? '',
-                    $data['receipt_header'] ?? '',
-                    $data['receipt_footer'],
-                    $data['currency'] ?? 'Rp',
-                    $data['logo_url'] ?? '',
-                    $data['tax_enabled'] ? 1 : 0,
-                    $data['tax_rate'] ?? 0,
-                    $data['points_per_amount'] ?? 10000,
-                    $data['points_value'] ?? 1,
-                    $existingSettings['id']
-                ]);
+                    updated_at = datetime('now')
+                    WHERE id = (SELECT id FROM app_settings ORDER BY id DESC LIMIT 1)";
             } else {
                 // Insert new settings
-                $insertQuery = "INSERT INTO app_settings (
-                    app_name, store_name, store_address, store_phone, store_email, 
-                    store_website, store_social_media, receipt_header, receipt_footer, 
-                    currency, logo_url, tax_enabled, tax_rate, points_per_amount, points_value
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-                $stmt = $db->prepare($insertQuery);
-                $result = $stmt->execute([
-                    $data['app_name'],
-                    $data['store_name'],
-                    $data['store_address'] ?? '',
-                    $data['store_phone'] ?? '',
-                    $data['store_email'] ?? '',
-                    $data['store_website'] ?? '',
-                    $data['store_social_media'] ?? '',
-                    $data['receipt_header'] ?? '',
-                    $data['receipt_footer'],
-                    $data['currency'] ?? 'Rp',
-                    $data['logo_url'] ?? '',
-                    $data['tax_enabled'] ? 1 : 0,
-                    $data['tax_rate'] ?? 0,
-                    $data['points_per_amount'] ?? 10000,
-                    $data['points_value'] ?? 1
-                ]);
+                $query = "INSERT INTO app_settings (
+                    app_name, store_name, store_address, store_phone, store_email,
+                    store_website, store_social_media, receipt_header, receipt_footer,
+                    currency, logo_url, tax_enabled, tax_rate, points_per_amount, points_value,
+                    created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))";
             }
 
-            if ($result) {
+            $stmt = $db->prepare($query);
+            $result = $stmt->execute([
+                $data['app_name'] ?? 'Kasir Digital',
+                $data['store_name'] ?? 'Toko ABC',
+                $data['store_address'] ?? '',
+                $data['store_phone'] ?? '',
+                $data['store_email'] ?? '',
+                $data['store_website'] ?? '',
+                $data['store_social_media'] ?? '',
+                $data['receipt_header'] ?? '',
+                $data['receipt_footer'] ?? 'Terima kasih atas kunjungan Anda',
+                $data['currency'] ?? 'Rp',
+                $data['logo_url'] ?? '',
+                isset($data['tax_enabled']) ? (int)$data['tax_enabled'] : 0,
+                $data['tax_rate'] ?? 0,
+                $data['points_per_amount'] ?? 10000,
+                $data['points_value'] ?? 1
+            ]);
+
+            if($result) {
                 echo json_encode(['success' => true, 'message' => 'Settings saved successfully']);
             } else {
-                throw new Exception('Failed to save settings');
+                echo json_encode(['success' => false, 'error' => 'Failed to save settings']);
             }
             break;
 
@@ -164,7 +154,10 @@ try {
     }
 
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'error' => $e->getMessage()
+    ]);
 }
 ?>

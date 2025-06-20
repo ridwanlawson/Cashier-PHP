@@ -1,115 +1,182 @@
+
 <?php
-session_start();
+// Ensure no output before this point
+if (ob_get_level()) {
+    ob_end_clean();
+}
+
+// Start session only if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once '../auth.php';
 require_once '../config/database.php';
 
+// Set headers after session is started
 header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
 
-$auth = new Auth();
-$auth->requireLogin();
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
+}
 
 try {
+    $auth = new Auth();
+    if (!$auth->isLoggedIn()) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+        exit;
+    }
+
     $database = new Database();
     $db = $database->getConnection();
+
+    if (!$db) {
+        throw new Exception('Database connection failed');
+    }
+
     $method = $_SERVER['REQUEST_METHOD'];
 
     switch($method) {
         case 'GET':
             if (isset($_GET['search'])) {
-                // Search members
+                // Search members by name or phone
                 $search = '%' . $_GET['search'] . '%';
                 $query = "SELECT * FROM members WHERE name LIKE ? OR phone LIKE ? ORDER BY name ASC";
                 $stmt = $db->prepare($query);
                 $stmt->execute([$search, $search]);
-                $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                foreach($members as &$member) {
-                    $member['id'] = (int)$member['id'];
-                    $member['points'] = (int)$member['points'];
-                }
-
-                echo json_encode($members);
             } else {
-                // Get all members
                 $query = "SELECT * FROM members ORDER BY created_at DESC";
                 $stmt = $db->prepare($query);
                 $stmt->execute();
-                $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                foreach($members as &$member) {
-                    $member['id'] = (int)$member['id'];
-                    $member['points'] = (int)$member['points'];
-                }
-
-                echo json_encode($members);
             }
+
+            $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach($members as &$member) {
+                $member['id'] = (int)$member['id'];
+                $member['points'] = (int)$member['points'];
+            }
+
+            echo json_encode($members);
             break;
 
         case 'POST':
             $input = file_get_contents("php://input");
-            $data = json_decode($input, true);
-
-            if (!isset($data['name']) || !isset($data['phone'])) {
-                throw new Exception('Name and phone are required');
+            if (!$input) {
+                throw new Exception('No input data received');
             }
 
-            $query = "INSERT INTO members (name, phone, points) VALUES (?, ?, ?)";
+            $data = json_decode($input, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new Exception('Invalid JSON data: ' . json_last_error_msg());
+            }
+
+            // Validate required fields
+            $required = ['name', 'phone'];
+            foreach ($required as $field) {
+                if (!isset($data[$field]) || trim($data[$field]) === '') {
+                    throw new Exception("Field '$field' is required");
+                }
+            }
+
+            // Check for duplicate phone
+            $query = "SELECT id FROM members WHERE phone = ?";
             $stmt = $db->prepare($query);
+            $stmt->execute([$data['phone']]);
+            if ($stmt->fetch()) {
+                throw new Exception('Phone number already exists');
+            }
+
+            $query = "INSERT INTO members (name, phone, points, created_at) VALUES (?, ?, ?, datetime('now'))";
+            $stmt = $db->prepare($query);
+
             $result = $stmt->execute([
-                $data['name'],
-                $data['phone'],
-                $data['points'] ?? 0
+                trim($data['name']),
+                trim($data['phone']),
+                0
             ]);
 
-            if ($result) {
-                echo json_encode(['success' => true, 'id' => $db->lastInsertId()]);
+            if($result) {
+                echo json_encode(['success' => true, 'message' => 'Member added successfully']);
             } else {
-                throw new Exception('Failed to add member');
+                echo json_encode(['success' => false, 'error' => 'Failed to add member']);
             }
             break;
 
         case 'PUT':
             $input = file_get_contents("php://input");
-            $data = json_decode($input, true);
+            if (!$input) {
+                throw new Exception('No input data received');
+            }
 
-            if (!isset($data['id']) || !isset($data['name']) || !isset($data['phone'])) {
-                throw new Exception('ID, name and phone are required');
+            $data = json_decode($input, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new Exception('Invalid JSON data: ' . json_last_error_msg());
+            }
+
+            // Validate required fields
+            $required = ['id', 'name', 'phone'];
+            foreach ($required as $field) {
+                if (!isset($data[$field]) || (is_string($data[$field]) && trim($data[$field]) === '')) {
+                    throw new Exception("Field '$field' is required");
+                }
+            }
+
+            // Check for duplicate phone (excluding current member)
+            $query = "SELECT id FROM members WHERE phone = ? AND id != ?";
+            $stmt = $db->prepare($query);
+            $stmt->execute([$data['phone'], (int)$data['id']]);
+            if ($stmt->fetch()) {
+                throw new Exception('Phone number already exists');
             }
 
             $query = "UPDATE members SET name = ?, phone = ?, points = ? WHERE id = ?";
             $stmt = $db->prepare($query);
             $result = $stmt->execute([
-                $data['name'],
-                $data['phone'],
-                $data['points'] ?? 0,
-                $data['id']
+                trim($data['name']),
+                trim($data['phone']),
+                (int)($data['points'] ?? 0),
+                (int)$data['id']
             ]);
 
-            if ($result) {
-                echo json_encode(['success' => true]);
+            if($result) {
+                echo json_encode(['success' => true, 'message' => 'Member updated successfully']);
             } else {
-                throw new Exception('Failed to update member');
+                echo json_encode(['success' => false, 'error' => 'Failed to update member']);
             }
             break;
 
         case 'DELETE':
             if (!isset($_GET['id'])) {
-                throw new Exception('Member ID required');
+                throw new Exception('Member ID is required');
             }
+
+            $id = (int)$_GET['id'];
 
             $query = "DELETE FROM members WHERE id = ?";
             $stmt = $db->prepare($query);
-            $result = $stmt->execute([$_GET['id']]);
+            $result = $stmt->execute([$id]);
 
-            if ($result) {
-                echo json_encode(['success' => true]);
+            if($result) {
+                echo json_encode(['success' => true, 'message' => 'Member deleted successfully']);
             } else {
-                throw new Exception('Failed to delete member');
+                echo json_encode(['success' => false, 'error' => 'Failed to delete member']);
             }
             break;
+
+        default:
+            throw new Exception('Method not allowed');
     }
 
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'error' => $e->getMessage()
+    ]);
 }
 ?>

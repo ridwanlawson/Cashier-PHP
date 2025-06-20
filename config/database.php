@@ -139,13 +139,13 @@ class Database {
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )",
             
-            // Insert default admin user
+            // Insert default admin user with properly hashed password
             "INSERT OR IGNORE INTO users (username, password, name, role) VALUES 
-             ('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrator', 'admin')",
+             ('admin', '" . password_hash('password', PASSWORD_DEFAULT) . "', 'Administrator', 'admin')",
              
-            // Insert default kasir user
+            // Insert default kasir user with properly hashed password
             "INSERT OR IGNORE INTO users (username, password, name, role) VALUES 
-             ('kasir', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Kasir', 'kasir')",
+             ('kasir', '" . password_hash('password', PASSWORD_DEFAULT) . "', 'Kasir', 'kasir')",
              
             // Insert default app settings
             "INSERT OR IGNORE INTO app_settings (

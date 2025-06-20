@@ -1281,6 +1281,18 @@ async function viewTransactionDetail(transactionId) {
             return;
         }
 
+        // Store current transaction data for printing
+        window.currentTransactionData = {
+            id: transaction.id,
+            items: transaction.items,
+            total: transaction.total,
+            transaction_date: transaction.transaction_date,
+            cashier_name: transaction.cashier_name,
+            member_name: transaction.member_name,
+            member_points: transaction.member_points,
+            payment_method: transaction.payment_method
+        };
+
         let tableHTML = `
             <div class="mb-3">
                 <h6>Transaksi #${transaction.id}</h6>
@@ -1349,7 +1361,7 @@ async function viewTransactionDetail(transactionId) {
         const modalFooter = document.querySelector('#transactionModal .modal-footer');
         if (modalFooter) {
             modalFooter.innerHTML = `
-                <button type="button" class="btn btn-primary" onclick="printTransactionReceipt(${transactionId})">
+                <button type="button" class="btn btn-primary" onclick="printCurrentTransactionReceipt()">
                     <i class="fas fa-print"></i> Cetak Struk
                 </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
@@ -1436,6 +1448,72 @@ async function printTransactionReceipt(transactionId) {
 
     } catch (error) {
         console.error('Error printing receipt:', error);
+        showAlert('Gagal mencetak struk', 'danger');
+    }
+}
+
+// New function to print current transaction receipt from modal
+function printCurrentTransactionReceipt() {
+    if (!window.currentTransactionData) {
+        showAlert('Data transaksi tidak tersedia', 'warning');
+        return;
+    }
+
+    try {
+        const transaction = window.currentTransactionData;
+        const receiptHTML = generateReceiptHTML(transaction.items, transaction);
+
+        // Create print window
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Struk Transaksi #${transaction.id}</title>
+                <style>
+                    body { 
+                        font-family: 'Courier New', monospace; 
+                        font-size: 12px; 
+                        line-height: 1.4; 
+                        max-width: 300px; 
+                        margin: 0 auto; 
+                        padding: 10px;
+                        background: white;
+                        color: black;
+                    }
+                    .text-center { text-align: center; }
+                    .text-left { text-align: left; }
+                    .text-right { text-align: right; }
+                    .separator { border-top: 1px dashed #000; margin: 8px 0; }
+                    .receipt-header { margin-bottom: 15px; }
+                    .receipt-body { margin: 15px 0; }
+                    .receipt-footer { margin-top: 15px; }
+                    table { width: 100%; border-collapse: collapse; }
+                    td { padding: 2px 0; }
+                    .item-line { display: flex; justify-content: space-between; }
+                    .bold { font-weight: bold; }
+                    @media print {
+                        body { margin: 0; padding: 5px; }
+                    }
+                </style>
+            </head>
+            <body>
+                ${receiptHTML}
+                <script>
+                    window.onload = function() {
+                        window.print();
+                        window.onafterprint = function() {
+                            window.close();
+                        }
+                    }
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+
+    } catch (error) {
+        console.error('Error printing current transaction receipt:', error);
         showAlert('Gagal mencetak struk', 'danger');
     }
 }

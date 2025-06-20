@@ -1,26 +1,28 @@
 
 <?php
-// Start session first before any output
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Clean any output buffers
-if (ob_get_level()) {
+// Clean any output buffers and start fresh BEFORE any output
+while (ob_get_level()) {
     ob_end_clean();
 }
 ob_start();
 
-header('Content-Type: application/json');
-
 require_once '../config/database.php';
 require_once '../auth.php';
+
+// Start session only if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+header('Content-Type: application/json');
 
 $auth = new Auth();
 $auth->requireLogin();
 
 $user = $auth->getUser();
 $method = $_SERVER['REQUEST_METHOD'];
+
+// For GET requests, allow all authenticated users to view settings
+// For POST requests, only admin can modify settings
 
 try {
     $database = new Database();
@@ -65,8 +67,14 @@ try {
                 $settings['points_value'] = (int)$settings['points_value'];
             }
 
-            ob_clean();
+            // Clean output buffer and send JSON
+            if (ob_get_level()) {
+                ob_clean();
+            }
             echo json_encode($settings);
+            if (ob_get_level()) {
+                ob_end_flush();
+            }
             break;
 
         case 'POST':
@@ -177,8 +185,13 @@ try {
             }
 
             if ($result) {
-                ob_clean();
+                if (ob_get_level()) {
+                    ob_clean();
+                }
                 echo json_encode(['success' => true, 'message' => 'Settings saved successfully']);
+                if (ob_get_level()) {
+                    ob_end_flush();
+                }
             } else {
                 throw new Exception('Failed to save settings');
             }
@@ -189,12 +202,13 @@ try {
     }
 
 } catch (Exception $e) {
-    ob_clean();
+    if (ob_get_level()) {
+        ob_clean();
+    }
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-}
-
-if (ob_get_level()) {
-    ob_end_flush();
+    if (ob_get_level()) {
+        ob_end_flush();
+    }
 }
 ?>

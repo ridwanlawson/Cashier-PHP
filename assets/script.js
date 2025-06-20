@@ -67,17 +67,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const savedTheme = localStorage.getItem('theme') || 'dark';
     applyTheme(savedTheme);
 
-    // Store current user data for receipt printing
-    const userNameElement = document.querySelector('.user-name');
-    const userRoleElement = document.querySelector('.user-role');
-    if (userNameElement && userRoleElement) {
-        const currentUser = {
-            name: userNameElement.textContent,
-            role: userRoleElement.textContent
-        };
-        sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
-    }
-
     loadAppSettings();
     loadProducts();
     loadMembers();
@@ -1084,9 +1073,6 @@ async function processTransaction() {
 function showReceipt(transactionId, cartItems, total, payment) {
     const change = payment - total;
 
-    // Get current user data for cashier name
-    const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
-
     // Store current receipt data for printing
     window.currentReceiptData = {
         id: transactionId,
@@ -1094,10 +1080,7 @@ function showReceipt(transactionId, cartItems, total, payment) {
         total: total,
         payment: payment,
         change: change,
-        transaction_date: new Date().toISOString(),
-        cashier_name: currentUser.name || 'Admin',
-        member_name: selectedMember ? selectedMember.name : null,
-        member_points: selectedMember ? selectedMember.points : null
+        transaction_date: new Date().toISOString()
     };
 
     let receiptHTML = `
@@ -1344,10 +1327,7 @@ async function printTransactionReceipt(transactionId) {
             total: transaction.total,
             payment: transaction.total, // Default payment amount
             change: 0,
-            transaction_date: transaction.transaction_date,
-            cashier_name: transaction.cashier_name,
-            member_name: transaction.member_name,
-            member_points: transaction.member_points
+            transaction_date: transaction.transaction_date
         };
 
         const receiptHTML = generateReceiptHTML(transaction.items, transaction);
@@ -1431,18 +1411,6 @@ function generateReceiptHTML(cartItems, transactionData = null) {
             ${transactionData ? `<div style="display: flex; justify-content: space-between;">
                 <span>No. Transaksi:</span>
                 <span>#${transactionData.id}</span>
-            </div>` : ''}
-            ${transactionData && transactionData.cashier_name ? `<div style="display: flex; justify-content: space-between;">
-                <span>Kasir:</span>
-                <span>${transactionData.cashier_name}</span>
-            </div>` : ''}
-            ${transactionData && transactionData.member_name ? `<div style="display: flex; justify-content: space-between;">
-                <span>Member:</span>
-                <span>${transactionData.member_name}</span>
-            </div>` : ''}
-            ${transactionData && transactionData.member_name && transactionData.member_points !== null ? `<div style="display: flex; justify-content: space-between;">
-                <span>Poin Member:</span>
-                <span>${transactionData.member_points} poin</span>
             </div>` : ''}
         </div>
 

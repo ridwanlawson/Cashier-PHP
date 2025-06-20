@@ -1,4 +1,3 @@
-
 // Global variables
 let cart = [];
 let products = [];
@@ -1962,9 +1961,21 @@ async function resumeTransaction(transactionId) {
             // Delete held transaction
             await deleteHeldTransaction(transactionId, false);
 
-            // Close modal
+            // Close modal properly
             const modal = bootstrap.Modal.getInstance(document.getElementById('heldTransactionsModal'));
-            if (modal) modal.hide();
+            if (modal) {
+                modal.hide();
+                // Force remove backdrop if it exists
+                setTimeout(() => {
+                    const backdrop = document.querySelector('.modal-backdrop');
+                    if (backdrop) {
+                        backdrop.remove();
+                    }
+                    // Reset body styles
+                    document.body.classList.remove('modal-open');
+                    document.body.style.removeProperty('padding-right');
+                }, 300);
+            }
 
             // Switch to cashier page
             showPage('cashier');
@@ -1987,7 +1998,9 @@ async function deleteHeldTransaction(transactionId, showMessage = true) {
             if (showMessage) {
                 showAlert('Transaksi tertunda dihapus', 'info');
                 // Refresh held transactions modal
-                showHeldTransactions();
+                setTimeout(() => {
+                    showHeldTransactions();
+                }, 100);
             }
         }
     } catch (error) {

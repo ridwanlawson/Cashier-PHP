@@ -916,11 +916,8 @@ $user = $auth->getUser();
                                 </div>
                                 <div class="card-body">
                                     <div class="d-grid gap-2">
-                                        <button class="btn btn-warning btn-sm" onclick="holdTransaction()">
+                                        <button class="btn btn-warning" onclick="holdTransaction()">
                                             <i class="fas fa-pause"></i> Tahan Transaksi
-                                        </button>
-                                        <button class="btn btn-info btn-sm" onclick="showHeldTransactions()">
-                                            <i class="fas fa-list"></i> Lihat Tertunda
                                         </button>
                                     </div>
                                 </div>

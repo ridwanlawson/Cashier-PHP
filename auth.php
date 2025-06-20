@@ -1,9 +1,4 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-require_once __DIR__ . '/config/database.php';
-
 class Auth {
     public function login($username, $password) {
         try {
@@ -24,7 +19,7 @@ class Auth {
             if ($user) {
                 // Regenerate session ID for security
                 session_regenerate_id(true);
-                
+
                 $_SESSION['user'] = [
                     'id' => (int)$user['id'],
                     'username' => $user['username'],
@@ -54,8 +49,15 @@ class Auth {
 
     public function requireLogin() {
         if (!$this->isLoggedIn()) {
-            header('Location: login.php');
+            if (!headers_sent()) {
+                header('HTTP/1.1 401 Unauthorized');
+            }
+            echo json_encode(['error' => 'Authentication required']);
             exit;
         }
     }
 }
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+require_once __DIR__ . '/config/database.php';

@@ -1,8 +1,14 @@
 <?php
-session_start();
-require_once '../auth.php';
 require_once '../config/database.php';
+require_once '../auth.php';
 
+// Clean any output buffers and start fresh
+if (ob_get_level()) {
+    ob_end_clean();
+}
+ob_start();
+
+session_start();
 header('Content-Type: application/json');
 
 $auth = new Auth();
@@ -89,7 +95,9 @@ try {
                 $settings = $stmt->fetch(PDO::FETCH_ASSOC);
             }
 
+            ob_clean();
             echo json_encode($settings);
+            ob_end_flush();
             break;
 
         case 'POST':
@@ -139,7 +147,9 @@ try {
             ]);
 
             if ($result) {
+                ob_clean();
                 echo json_encode(['success' => true, 'message' => 'Settings saved successfully']);
+                ob_end_flush();
             } else {
                 throw new Exception('Failed to save settings');
             }
@@ -150,7 +160,9 @@ try {
     }
 
 } catch (Exception $e) {
+    ob_clean();
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    ob_end_flush();
 }
 ?>

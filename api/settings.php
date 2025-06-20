@@ -1,17 +1,19 @@
+
 <?php
-// Clean any output buffers and start fresh BEFORE any output
-while (ob_get_level()) {
+// Start output buffering immediately and clean any existing output
+if (ob_get_level()) {
     ob_end_clean();
 }
 ob_start();
 
-require_once '../config/database.php';
-require_once '../auth.php';
-
-// Start session only if not already started
+// Start session first, before any includes
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+require_once '../config/database.php';
+require_once '../auth.php';
+
 header('Content-Type: application/json');
 
 $auth = new Auth();
@@ -67,13 +69,9 @@ try {
             }
 
             // Clean output buffer and send JSON
-            if (ob_get_level()) {
-                ob_clean();
-            }
+            ob_clean();
             echo json_encode($settings);
-            if (ob_get_level()) {
-                ob_end_flush();
-            }
+            ob_end_flush();
             break;
 
         case 'POST':
@@ -184,13 +182,9 @@ try {
             }
 
             if ($result) {
-                if (ob_get_level()) {
-                    ob_clean();
-                }
+                ob_clean();
                 echo json_encode(['success' => true, 'message' => 'Settings saved successfully']);
-                if (ob_get_level()) {
-                    ob_end_flush();
-                }
+                ob_end_flush();
             } else {
                 throw new Exception('Failed to save settings');
             }
@@ -201,13 +195,9 @@ try {
     }
 
 } catch (Exception $e) {
-    if (ob_get_level()) {
-        ob_clean();
-    }
+    ob_clean();
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-    if (ob_get_level()) {
-        ob_end_flush();
-    }
+    ob_end_flush();
 }
 ?>

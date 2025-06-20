@@ -1,10 +1,26 @@
 <?php
-session_start();
+// Start session first
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once 'auth.php';
 
 $auth = new Auth();
-$auth->requireLogin();
+
+// Check if user is logged in, if not redirect to login
+if (!$auth->isLoggedIn()) {
+    header('Location: login.php');
+    exit;
+}
+
 $user = $auth->getUser();
+
+// Double check user data
+if (!$user || empty($user)) {
+    header('Location: login.php');
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">

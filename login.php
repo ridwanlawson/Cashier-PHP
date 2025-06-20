@@ -1,25 +1,34 @@
 <?php
-session_start();
+// Start session first
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once 'auth.php';
 
 $auth = new Auth();
 $error = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = $_POST['username'] ?? '';
-    $password = $_POST['password'] ?? '';
-    
-    if ($auth->login($username, $password)) {
-        header('Location: index.php');
-        exit;
-    } else {
-        $error = 'Username atau password salah!';
-    }
-}
-
+// Check if already logged in
 if ($auth->isLoggedIn()) {
     header('Location: index.php');
     exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $username = trim($_POST['username'] ?? '');
+    $password = $_POST['password'] ?? '';
+    
+    if (!empty($username) && !empty($password)) {
+        if ($auth->login($username, $password)) {
+            header('Location: index.php');
+            exit;
+        } else {
+            $error = 'Username atau password salah!';
+        }
+    } else {
+        $error = 'Username dan password harus diisi!';
+    }
 }
 ?>
 <!DOCTYPE html>

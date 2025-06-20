@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/config/database.php';
+
 class Auth {
     public function __construct() {
         // Only start session if not already started and headers not sent
@@ -43,11 +45,13 @@ class Auth {
     }
 
     public function logout() {
-        session_destroy();
+        if (session_status() !== PHP_SESSION_NONE) {
+            session_destroy();
+        }
     }
 
     public function isLoggedIn() {
-        return isset($_SESSION['user']);
+        return isset($_SESSION['user']) && !empty($_SESSION['user']);
     }
 
     public function getUser() {
@@ -56,15 +60,27 @@ class Auth {
 
     public function requireLogin() {
         if (!$this->isLoggedIn()) {
-            if (!headers_sent()) {
-                header('HTTP/1.1 401 Unauthorized');
+            // For web pages, redirect to login
+            if (!isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+                !str_contains($_SERVER['REQUEST_URI'], '/api/')) {
+                if (!headers_sent()) {
+                    header('Location: login.php');
+                    exit;
+                }
+            } else {
+                // For API requests, return JSON error
+                if (!headers_sent()) {
+                    header('HTTP/1.1 401 Unauthorized');
+                    header('Content-Type: application/json');
+                }
+                echo json_encode(['error' => 'Authentication required']);
+                exit;
             }
-            echo json_encode(['error' => 'Authentication required']);
-            exit;
         }
     }
 }
+
+// Start session globally
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-require_once __DIR__ . '/config/database.php';

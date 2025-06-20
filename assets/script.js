@@ -335,20 +335,48 @@ async function loadSettings() {
         const appNameField = document.getElementById('app-name');
         if (appNameField) {
             appNameField.value = settings.app_name || 'Kasir Digital';
-            document.getElementById('store-name').value = settings.store_name || '';
-            document.getElementById('store-address').value = settings.store_address || '';
-            document.getElementById('store-phone').value = settings.store_phone || '';
-            document.getElementById('store-email').value = settings.store_email || '';
-            document.getElementById('store-website').value = settings.store_website || '';
-            document.getElementById('store-social-media').value = settings.store_social_media || '';
-            document.getElementById('receipt-footer').value = settings.receipt_footer || '';
-            document.getElementById('receipt-header').value = settings.receipt_header || '';
-            document.getElementById('currency').value = settings.currency || 'Rp';
-            document.getElementById('logo-url').value = settings.logo_url || '';
-            document.getElementById('tax-enabled').checked = settings.tax_enabled || false;
-            document.getElementById('tax-rate').value = settings.tax_rate || 0;
-            document.getElementById('points-per-amount').value = settings.points_per_amount || 10000;
-            document.getElementById('points-value').value = settings.points_value || 1;
+            
+            const storeNameField = document.getElementById('store-name');
+            if (storeNameField) storeNameField.value = settings.store_name || '';
+            
+            const storeAddressField = document.getElementById('store-address');
+            if (storeAddressField) storeAddressField.value = settings.store_address || '';
+            
+            const storePhoneField = document.getElementById('store-phone');
+            if (storePhoneField) storePhoneField.value = settings.store_phone || '';
+            
+            const storeEmailField = document.getElementById('store-email');
+            if (storeEmailField) storeEmailField.value = settings.store_email || '';
+            
+            const storeWebsiteField = document.getElementById('store-website');
+            if (storeWebsiteField) storeWebsiteField.value = settings.store_website || '';
+            
+            const storeSocialMediaField = document.getElementById('store-social-media');
+            if (storeSocialMediaField) storeSocialMediaField.value = settings.store_social_media || '';
+            
+            const receiptFooterField = document.getElementById('receipt-footer');
+            if (receiptFooterField) receiptFooterField.value = settings.receipt_footer || '';
+            
+            const receiptHeaderField = document.getElementById('receipt-header');
+            if (receiptHeaderField) receiptHeaderField.value = settings.receipt_header || '';
+            
+            const currencyField = document.getElementById('currency');
+            if (currencyField) currencyField.value = settings.currency || 'Rp';
+            
+            const logoUrlField = document.getElementById('logo-url');
+            if (logoUrlField) logoUrlField.value = settings.logo_url || '';
+            
+            const taxEnabledField = document.getElementById('tax-enabled');
+            if (taxEnabledField) taxEnabledField.checked = settings.tax_enabled || false;
+            
+            const taxRateField = document.getElementById('tax-rate');
+            if (taxRateField) taxRateField.value = settings.tax_rate || 0;
+            
+            const pointsPerAmountField = document.getElementById('points-per-amount');
+            if (pointsPerAmountField) pointsPerAmountField.value = settings.points_per_amount || 10000;
+            
+            const pointsValueField = document.getElementById('points-value');
+            if (pointsValueField) pointsValueField.value = settings.points_value || 1;
         }
     } catch (error) {
         console.error('Error loading settings:', error);

@@ -270,24 +270,6 @@ function applyTheme(theme) {
     }
 }
 
-// Load basic settings for all users
-async function loadBasicSettings() {
-    try {
-        const settings = await apiRequest('api/settings.php');
-        appSettings = settings;
-        console.log('Basic settings loaded:', appSettings);
-    } catch (error) {
-        console.error('Failed to load basic settings:', error);
-        // Set default settings if API fails
-        appSettings = {
-            app_name: 'Kasir Digital',
-            currency: 'Rp',
-            tax_enabled: false,
-            tax_rate: 0
-        };
-    }
-}
-
 // Load settings (admin only)
 async function loadSettings() {
     try {
@@ -960,7 +942,8 @@ async function processTransaction() {
             }))
         };
 
-        const result = await apiRequest('api/transactions.php', {            method: 'POST',
+        const result = await apiRequest('api/transactions.php', {
+            method: 'POST',
             body: JSON.stringify(transactionData)
         });
 
@@ -1087,7 +1070,8 @@ function printTransactionFromModal() {
 // Transaction functions
 async function loadTransactions() {
     try {
-        transactions = await apiRequest('api/transactions.php');
+        const response = await apiRequest('api/transactions.php');
+        transactions = response || [];
         displayTransactions();
     } catch (error) {
         console.error('Error loading transactions:', error);
@@ -1379,7 +1363,8 @@ function generateReceiptHTML(cartItems, transactionData = null) {
 // Inventory functions
 async function loadInventory() {
     try {
-        inventory = await apiRequest('api/inventory.php');
+        const response = await apiRequest('api/inventory.php');
+        inventory = response || [];
         displayInventoryData(inventory);
     } catch (error) {
         console.error('Error loading inventory:', error);
@@ -1445,12 +1430,14 @@ function populateStockProductSelect() {
 
     select.innerHTML = '<option value="">-- Pilih Produk --</option>';
 
-    products.forEach(product => {
-        const option = document.createElement('option');
-        option.value = product.id;
-        option.textContent = `${product.name} (Stok: ${product.stock})`;
-        select.appendChild(option);
-    });
+    if (Array.isArray(products)) {
+        products.forEach(product => {
+            const option = document.createElement('option');
+            option.value = product.id;
+            option.textContent = `${product.name} (Stok: ${product.stock})`;
+            select.appendChild(option);
+        });
+    }
 }
 
 function updateMarginLabel() {
@@ -1535,7 +1522,8 @@ async function addStock() {
 // User management functions (admin only)
 async function loadUsers() {
     try {
-        users = await apiRequest('api/users.php');
+        const response = await apiRequest('api/users.php');
+        users = response || [];
         displayUsers();
     } catch (error) {
         console.error('Error loading users:', error);
@@ -2002,213 +1990,6 @@ async function deleteHeldTransaction(transactionId, showMessage = true) {
         if (showMessage) {
             showAlert('Gagal menghapus transaksi tertunda', 'danger');
         }
-    }
-}
-
-// Members management page functions
-async function loadMembers() {
-    try {
-        const membersResponse = await apiRequest('api/members.php');
-        members = membersResponse || [];
-        displayMembers(members);
-    } catch (error) {
-        console.error('Error loading members:', error);
-        showAlert('Gagal memuat data member', 'danger');
-    }
-}
-
-function displayMembers(membersData) {
-    const tbody = document.getElementById('members-tbody');
-    if (!tbody) return;
-
-    // Destroy existing DataTable if it exists
-    if ($.fn.DataTable.isDataTable('#members-table')) {
-        $('#members-table').DataTable().destroy();
-    }
-
-    tbody.innerHTML = '';
-
-    if (!Array.isArray(membersData) || membersData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center">Tidak ada data member</td></tr>';
-        return;
-    }
-
-    membersData.forEach(member => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${member.name}</td>
-            <td>${member.phone}</td>
-            <td>${member.points}</td>
-            <td>${new Date(member.created_at).toLocaleDateString('id-ID')}</td>
-            <td>
-                <button class="btn btn-warning btn-sm me-1" onclick="editMember(${member.id})">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn btn-danger btn-sm" onclick="deleteMember(${member.id})">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
-
-    // Initialize DataTable
-    setTimeout(() => {
-        $('#members-table').DataTable({
-            language: {
-                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
-            },
-            dom: 'Bfrtip',
-            buttons: [
-                'copy', 'csv', 'excel', 'pdf', 'print'
-            ],
-            pageLength: 25,
-            responsive: true
-        });
-    }, 100);
-}
-
-// User management functions (admin only)
-async function loadUsers() {
-    try {
-        users = await apiRequest('api/users.php');
-        displayUsers();
-    } catch (error) {
-        console.error('Error loading users:', error);
-        showAlert('Gagal memuat data user', 'danger');
-    }
-}
-
-function displayUsers() {
-    const tbody = document.getElementById('users-tbody');
-    if (!tbody) return;
-
-    // Destroy existing DataTable if it exists
-    if ($.fn.DataTable.isDataTable('#users-table')) {
-        $('#users-table').DataTable().destroy();
-    }
-
-    tbody.innerHTML = '';
-
-    if (!Array.isArray(users) || users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center">Tidak ada data user</td></tr>';
-        return;
-    }
-
-    users.forEach(user => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${user.username}</td>
-            <td>${user.name}</td>
-            <td><span class="badge bg-${user.role === 'admin' ? 'primary' : 'secondary'}">${user.role}</span></td>
-            <td>${new Date(user.created_at).toLocaleDateString('id-ID')}</td>
-            <td>
-                <button class="btn btn-warning btn-sm me-1" onclick="editUser(${user.id})">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn btn-danger btn-sm" onclick="deleteUser(${user.id})">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
-
-    // Initialize DataTable
-    setTimeout(() => {
-        $('#users-table').DataTable({
-            language: {
-                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
-            },
-            pageLength: 25,
-            responsive: true
-        });
-    }, 100);
-}
-
-// Member search functionality
-async function searchMembers(searchTerm) {
-    try {
-        const searchResults = await apiRequest(`api/members.php?search=${encodeURIComponent(searchTerm)}`);
-        displayMemberSuggestions(searchResults);
-    } catch (error) {
-        console.error('Error searching members:', error);
-    }
-}
-
-function displayMemberSuggestions(membersData) {
-    let container = document.getElementById('member-suggestions');
-    if (!container) {
-        // Create suggestions container if not exists
-        const memberSearchInput = document.getElementById('member-search');
-        if (memberSearchInput) {
-            const memberCard = memberSearchInput.closest('.card-body');
-            if (memberCard) {
-                const suggestionsDiv = document.createElement('div');
-                suggestionsDiv.id = 'member-suggestions';
-                suggestionsDiv.className = 'list-group mt-2';
-                memberCard.appendChild(suggestionsDiv);
-                container = suggestionsDiv;
-            }
-        }
-    }
-
-    if (!container) return;
-
-    container.innerHTML = '';
-
-    if (!membersData || membersData.length === 0) {
-        container.innerHTML = '<div class="list-group-item">Member tidak ditemukan</div>';
-        return;
-    }
-
-    membersData.forEach(member => {
-        const item = document.createElement('div');
-        item.className = 'list-group-item list-group-item-action cursor-pointer';
-        item.innerHTML = `
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <strong>${member.name}</strong><br>
-                    <small class="text-muted">${member.phone}</small>
-                </div>
-                <span class="text-cyan">${member.points} poin</span>
-            </div>
-        `;
-        item.onclick = () => selectMember(member);
-        container.appendChild(item);
-    });
-}
-
-function clearMemberSuggestions() {
-    const container = document.getElementById('member-suggestions');
-    if (container) container.innerHTML = '';
-}
-
-function selectMember(member) {
-    selectedMember = member;
-    document.getElementById('member-search').value = member.name;
-    document.getElementById('selected-member').innerHTML = `
-        <strong>${member.name}</strong><br>
-        <small>Tel: ${member.phone} | Poin: ${member.points}</small>
-    `;
-
-    clearMemberSuggestions();
-}
-
-function clearMember() {
-    selectedMember = null;
-    document.getElementById('member-search').value = '';
-    document.getElementById('selected-member').innerHTML = '';
-    clearMemberSuggestions();
-}
-
-// Held transactions functions
-async function loadHeldTransactions() {
-    try {
-        const heldTransactions = await apiRequest('api/held-transactions.php');
-        console.log('Held transactions loaded:', heldTransactions.length);
-    } catch (error) {
-        console.error('Error loading held transactions:', error);
     }
 }
 

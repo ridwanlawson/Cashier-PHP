@@ -172,3 +172,92 @@ try {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }
 ?>
+<?php
+require_once '../config/database.php';
+
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
+header('Access-Control-Allow-Headers: Content-Type');
+
+$method = $_SERVER['REQUEST_METHOD'];
+
+try {
+    switch($method) {
+        case 'GET':
+            // Get dashboard statistics
+            $stats = [];
+            
+            // Total products
+            $query = "SELECT COUNT(*) as total FROM products";
+            $stmt = $db->prepare($query);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stats['total_products'] = $result['total'];
+            
+            // Today's transactions count
+            $query = "SELECT COUNT(*) as total FROM transactions WHERE DATE(transaction_date) = DATE('now')";
+            $stmt = $db->prepare($query);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stats['today_transactions'] = $result['total'];
+            
+            // Today's revenue
+            $query = "SELECT COALESCE(SUM(total), 0) as revenue FROM transactions WHERE DATE(transaction_date) = DATE('now')";
+            $stmt = $db->prepare($query);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stats['today_revenue'] = $result['revenue'];
+            
+            // Monthly revenue
+            $query = "SELECT COALESCE(SUM(total), 0) as revenue FROM transactions WHERE strftime('%Y-%m', transaction_date) = strftime('%Y-%m', 'now')";
+            $stmt = $db->prepare($query);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stats['monthly_revenue'] = $result['revenue'];
+            
+            // Monthly transactions count
+            $query = "SELECT COUNT(*) as total FROM transactions WHERE strftime('%Y-%m', transaction_date) = strftime('%Y-%m', 'now')";
+            $stmt = $db->prepare($query);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stats['monthly_transactions'] = $result['total'];
+            
+            // Average transaction value
+            $query = "SELECT COALESCE(AVG(total), 0) as avg_transaction FROM transactions WHERE strftime('%Y-%m', transaction_date) = strftime('%Y-%m', 'now')";
+            $stmt = $db->prepare($query);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stats['avg_transaction'] = round($result['avg_transaction'], 2);
+            
+            // Best selling product
+            $query = "SELECT p.name, SUM(ti.quantity) as total_sold FROM transaction_items ti
+                     JOIN products p ON ti.product_id = p.id
+                     JOIN transactions t ON ti.transaction_id = t.id
+                     WHERE strftime('%Y-%m', t.transaction_date) = strftime('%Y-%m', 'now')
+                     GROUP BY p.id, p.name
+                     ORDER BY total_sold DESC
+                     LIMIT 1";
+            $stmt = $db->prepare($query);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stats['best_product'] = $result ? $result['name'] : 'Tidak ada data';
+            
+            // Low stock products count
+            $query = "SELECT COUNT(*) as total FROM products WHERE stock <= 10";
+            $stmt = $db->prepare($query);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stats['low_stock'] = $result['total'];
+            
+            echo json_encode($stats);
+            break;
+            
+        default:
+            throw new Exception('Method not allowed');
+    }
+    
+} catch (Exception $e) {
+    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+}
+?>

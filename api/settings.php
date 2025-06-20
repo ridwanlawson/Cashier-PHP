@@ -1,4 +1,3 @@
-
 <?php
 // Ensure no output before this point
 if (ob_get_level()) {

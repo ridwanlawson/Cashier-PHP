@@ -1,4 +1,4 @@
-php
+
 <?php
 session_start();
 require_once '../auth.php';
@@ -28,7 +28,8 @@ try {
         throw new Exception('Database connection failed');
     }
 
-    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    switch($_SERVER['REQUEST_METHOD']) {
+        case 'GET':
             // Get current settings
             $query = "SELECT * FROM app_settings LIMIT 1";
             $stmt = $db->prepare($query);
@@ -50,8 +51,18 @@ try {
                     'logo_url' => '',
                     'receipt_header' => '',
                     'tax_enabled' => false,
-                    'tax_rate' => 0
+                    'tax_rate' => 0,
+                    'points_per_amount' => 10000,
+                    'points_value' => 1
                 ];
+            } else {
+                // Ensure points settings exist with defaults
+                if (!isset($settings['points_per_amount'])) {
+                    $settings['points_per_amount'] = 10000;
+                }
+                if (!isset($settings['points_value'])) {
+                    $settings['points_value'] = 1;
+                }
             }
 
             echo json_encode($settings);
@@ -101,7 +112,9 @@ try {
                 'currency' => trim($data['currency'] ?? 'Rp'),
                 'logo_url' => trim($data['logo_url'] ?? ''),
                 'tax_enabled' => isset($data['tax_enabled']) ? (int)(bool)$data['tax_enabled'] : 0,
-                'tax_rate' => floatval($data['tax_rate'] ?? 0)
+                'tax_rate' => floatval($data['tax_rate'] ?? 0),
+                'points_per_amount' => max(1, intval($data['points_per_amount'] ?? 10000)),
+                'points_value' => max(1, intval($data['points_value'] ?? 1))
             ];
 
             // Check if settings exist
@@ -116,26 +129,29 @@ try {
                          app_name = ?, store_name = ?, store_address = ?, store_phone = ?,
                          store_email = ?, store_website = ?, store_social_media = ?,
                          receipt_footer = ?, currency = ?, logo_url = ?, receipt_header = ?,
-                         tax_enabled = ?, tax_rate = ?, updated_at = datetime('now') WHERE id = ?";
+                         tax_enabled = ?, tax_rate = ?, points_per_amount = ?, points_value = ?,
+                         updated_at = datetime('now') WHERE id = ?";
                 $stmt = $db->prepare($query);
                 $result = $stmt->execute([
                     $cleanData['app_name'], $cleanData['store_name'], $cleanData['store_address'], $cleanData['store_phone'],
                     $cleanData['store_email'], $cleanData['store_website'], $cleanData['store_social_media'],
                     $cleanData['receipt_footer'], $cleanData['currency'], $cleanData['logo_url'], $cleanData['receipt_header'],
-                    $cleanData['tax_enabled'], $cleanData['tax_rate'], $exists['id']
+                    $cleanData['tax_enabled'], $cleanData['tax_rate'], $cleanData['points_per_amount'], $cleanData['points_value'],
+                    $exists['id']
                 ]);
             } else {
                 // Insert new settings
                 $query = "INSERT INTO app_settings 
                          (app_name, store_name, store_address, store_phone, store_email, store_website,
-                          store_social_media, receipt_footer, currency, logo_url, receipt_header, tax_enabled, tax_rate, created_at, updated_at)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))";
+                          store_social_media, receipt_footer, currency, logo_url, receipt_header, tax_enabled, tax_rate,
+                          points_per_amount, points_value, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))";
                 $stmt = $db->prepare($query);
                 $result = $stmt->execute([
                     $cleanData['app_name'], $cleanData['store_name'], $cleanData['store_address'], $cleanData['store_phone'],
                     $cleanData['store_email'], $cleanData['store_website'], $cleanData['store_social_media'],
                     $cleanData['receipt_footer'], $cleanData['currency'], $cleanData['logo_url'], $cleanData['receipt_header'],
-                    $cleanData['tax_enabled'], $cleanData['tax_rate']
+                    $cleanData['tax_enabled'], $cleanData['tax_rate'], $cleanData['points_per_amount'], $cleanData['points_value']
                 ]);
             }
 

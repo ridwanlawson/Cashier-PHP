@@ -10,13 +10,13 @@ class Database {
         try {
             // Use SQLite for Replit compatibility
             $db_path = __DIR__ . '/../api/kasir_digital.db';
-            
+
             // Ensure directory exists
             $db_dir = dirname($db_path);
             if (!is_dir($db_dir)) {
                 mkdir($db_dir, 0755, true);
             }
-            
+
             $this->conn = new PDO("sqlite:" . $db_path);
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
@@ -35,7 +35,7 @@ class Database {
         if (!$this->conn) {
             return false;
         }
-        
+
         $queries = [
             "CREATE TABLE IF NOT EXISTS products (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -87,17 +87,19 @@ class Database {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 app_name TEXT DEFAULT 'Kasir Digital',
                 store_name TEXT DEFAULT 'Toko ABC',
-                store_address TEXT DEFAULT 'Jl. Contoh No. 123',
-                store_phone TEXT DEFAULT '021-12345678',
-                store_email TEXT DEFAULT 'info@example.com',
-                store_website TEXT DEFAULT 'www.example.com',
-                store_social_media TEXT DEFAULT '@example',
-                receipt_footer TEXT DEFAULT 'Terima kasih atas kunjungan Anda',
-                receipt_header TEXT DEFAULT '',
+                store_address TEXT,
+                store_phone TEXT,
+                store_email TEXT,
+                store_website TEXT,
+                store_social_media TEXT,
+                receipt_footer TEXT DEFAULT 'Terima kasih',
+                receipt_header TEXT,
                 currency TEXT DEFAULT 'Rp',
-                logo_url TEXT DEFAULT '',
+                logo_url TEXT,
                 tax_rate REAL DEFAULT 0,
                 tax_enabled INTEGER DEFAULT 0,
+                points_per_amount INTEGER DEFAULT 10000,
+                points_value INTEGER DEFAULT 1,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )",
@@ -135,7 +137,7 @@ class Database {
                 error_log("Table creation error: " . $e->getMessage() . " Query: " . $query);
             }
         }
-        
+
         return true;
     }
 }

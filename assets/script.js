@@ -1,12 +1,123 @@
 // Global variables
-let products = [];
 let cart = [];
-let transactions = [];
+let products = [];
+let members = [];
 let users = [];
-let inventory = [];
+let selectedMember = null;
 let appSettings = {};
+let transactions = [];
 
-// API request helper
+// Initialize the application
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Page loaded, initializing...');
+    loadAppSettings();
+    loadProducts();
+    loadMembers();
+    loadUsers();
+    loadHeldTransactions();
+
+    // Set up event listeners
+    setupEventListeners();
+
+    console.log('Initialization complete');
+});
+
+function setupEventListeners() {
+    // Member search functionality
+    const memberSearch = document.getElementById('member-search');
+    if (memberSearch) {
+        memberSearch.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.trim();
+            if (searchTerm.length >= 3) {
+                searchMembers(searchTerm);
+            } else {
+                clearMemberSuggestions();
+            }
+        });
+    }
+
+    // Payment method change handler
+    const paymentMethod = document.getElementById('payment-method');
+    if (paymentMethod) {
+        paymentMethod.addEventListener('change', updatePaymentMethod);
+    }
+
+    // Add event listeners
+    const searchProduct = document.getElementById('search-product');
+    if (searchProduct) {
+        searchProduct.addEventListener('input', searchProducts);
+        searchProduct.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                // Check if it's a barcode (numeric and length > 5)
+                const searchTerm = this.value.trim();
+                if (/^\d+$/.test(searchTerm) && searchTerm.length >= 5) {
+                    // Search product by barcode and auto-add
+                    searchProductByBarcode(searchTerm);
+                } else {
+                    // Manual add to cart
+                    addToCart();
+                }
+            }
+        });
+    }
+
+    const paymentAmount = document.getElementById('payment-amount');
+    if (paymentAmount) {
+        paymentAmount.addEventListener('input', calculateChange);
+    }
+
+    const purchasePrice = document.getElementById('purchase-price');
+    if (purchasePrice) {
+        purchasePrice.addEventListener('input', calculateSellingPrice);
+    }
+
+    const marginValue = document.getElementById('margin-value');
+    if (marginValue) {
+        marginValue.addEventListener('input', calculateSellingPrice);
+    }
+
+    // Close mobile menu when nav link is clicked
+    const navLinks = document.querySelectorAll('.nav-link');
+    navLinks.forEach(link => {
+        link.addEventListener('click', closeMobileMenu);
+    });
+}
+
+// Load app settings
+async function loadAppSettings() {
+    console.log('Loading app settings...');
+    try {
+        const response = await apiRequest('api/settings.php');
+        if (response) {
+            appSettings = response;
+            updateAppTitle();
+        }
+    } catch (error) {
+        console.error('Failed to load basic settings:', error);
+        // Set default settings if loading fails
+        appSettings = {
+            app_name: 'Kasir Digital',
+            store_name: 'Toko ABC',
+            currency: 'Rp',
+            tax_enabled: false,
+            tax_rate: 0,
+            points_per_amount: 10000,
+            points_value: 1
+        };
+    }
+}
+
+function updateAppTitle() {
+    const titleElements = document.querySelectorAll('.app-title');
+    titleElements.forEach(el => {
+        if (appSettings.app_name) {
+            el.textContent = appSettings.app_name;
+        }
+    });
+}
+
+// API request helper function
 async function apiRequest(url, options = {}) {
     try {
         const response = await fetch(url, {
@@ -17,26 +128,25 @@ async function apiRequest(url, options = {}) {
             ...options
         });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`HTTP ${response.status}: ${errorText}`);
-            throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
-        }
+        const text = await response.text();
 
-        const responseText = await response.text();
-        
-        if (!responseText) {
+        if (!text) {
             throw new Error('Empty response from server');
         }
 
+        let data;
         try {
-            const result = JSON.parse(responseText);
-            return result;
+            data = JSON.parse(text);
         } catch (parseError) {
-            console.error('Failed to parse JSON response:', responseText);
-            console.error('Parse error:', parseError);
+            console.error('Failed to parse JSON response:', text);
             throw new Error('Invalid JSON response from server');
         }
+
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        }
+
+        return data;
     } catch (error) {
         console.error('API request failed:', error);
         throw error;
@@ -90,6 +200,7 @@ function showPage(pageId, linkElement) {
     switch(pageId) {
         case 'products':
             loadProducts();
+            displayProducts();
             break;
         case 'cashier':
             loadProducts();
@@ -359,7 +470,8 @@ async function loadLowStockProducts() {
 // Product functions
 async function loadProducts() {
     try {
-        products = await apiRequest('api/products.php');
+        const response = await apiRequest('api/products.php');
+        products = response || [];
         displayProducts();
         populateStockProductSelect();
     } catch (error) {
@@ -368,7 +480,7 @@ async function loadProducts() {
     }
 }
 
-function displayProducts() {
+function displayProducts(productsToShow = products) {
     const tbody = document.getElementById('products-tbody');
     if (!tbody) return;
 
@@ -928,22 +1040,22 @@ function showReceipt(transactionId, cartItems, total, payment) {
     }
 
     receiptHTML += `
-            <div class="row">
-                <div class="col-6"><strong>Total:</strong></div>
-                <div class="col-6 text-end"><strong>${appSettings.currency || 'Rp'} ${formatNumber(total)}</strong></div>
-            </div>
-            <div class="row">
-                <div class="col-6">Bayar:</div>
-                <div class="col-6 text-end">${appSettings.currency || 'Rp'} ${formatNumber(payment)}</div>
-            </div>
-            <div class="row">
-                <div class="col-6">Kembalian:</div>
-                <div class="col-6 text-end">${appSettings.currency || 'Rp'} ${formatNumber(change)}</div>
-            </div>
+        <div class="row">
+            <div class="col-6"><strong>Total:</strong></div>
+            <div class="col-6 text-end"><strong>${appSettings.currency || 'Rp'} ${formatNumber(total)}</strong></div>
         </div>
-        <div class="text-center mt-3">
-            <small>${appSettings.receipt_footer || 'Terima kasih atas kunjungan Anda'}</small>
+        <div class="row">
+            <div class="col-6">Bayar:</div>
+            <div class="col-6 text-end">${appSettings.currency || 'Rp'} ${formatNumber(payment)}</div>
         </div>
+        <div class="row">
+            <div class="col-6">Kembalian:</div>
+            <div class="col-6 text-end">${appSettings.currency || 'Rp'} ${formatNumber(change)}</div>
+        </div>
+    </div>
+    <div class="text-center mt-3">
+        <small>${appSettings.receipt_footer || 'Terima kasih atas kunjungan Anda'}</small>
+    </div>
     `;
 
     // Show receipt in modal
@@ -1231,23 +1343,23 @@ function generateReceiptHTML(cartItems, transactionData = null) {
     const total = transactionData ? transactionData.total : (subtotal + taxAmount);
 
     receiptHTML += `
-            <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; margin-top: 5px; padding-top: 5px; border-top: 1px solid #000;">
-                <span>TOTAL:</span>
-                <span>${appSettings.currency || 'Rp'} ${formatNumber(total)}</span>
-            </div>
+        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; margin-top: 5px; padding-top: 5px; border-top: 1px solid #000;">
+            <span>TOTAL:</span>
+            <span>${appSettings.currency || 'Rp'} ${formatNumber(total)}</span>
         </div>
+    </div>
 
-        <div class="separator"></div>
+    <div class="separator"></div>
 
-        <div class="text-center receipt-footer">
-            <div style="margin: 10px 0;">
-                ${appSettings.receipt_footer || 'Terima kasih atas kunjungan Anda'}
-            </div>
-            <div style="font-size: 10px;">
-                Powered by ${appSettings.app_name || 'Kasir Digital'}
-            </div>
+    <div class="text-center receipt-footer">
+        <div style="margin: 10px 0;">
+            ${appSettings.receipt_footer || 'Terima kasih atas kunjungan Anda'}
         </div>
-    `;
+        <div style="font-size: 10px;">
+            Powered by ${appSettings.app_name || 'Kasir Digital'}
+        </div>
+    </div>
+`;
 
     return receiptHTML;
 }
@@ -2122,3 +2234,796 @@ document.addEventListener('DOMContentLoaded', function() {
 
     console.log('Initialization complete');
 });
+
+// Print current receipt (for kasir modal)
+function printCurrentReceipt() {
+    if (window.currentReceiptData) {
+        const receiptHTML = generateReceiptHTML(window.currentReceiptData.items, window.currentReceiptData);
+
+        // Create print window
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Struk Transaksi #${window.currentReceiptData.id}</title>
+                <style>
+                    body { 
+                        font-family: 'Courier New', monospace; 
+                        font-size: 12px; 
+                        line-height: 1.4; 
+                        max-width: 300px; 
+                        margin: 0 auto; 
+                        padding: 10px;
+                        background: white;
+                        color: black;
+                    }
+                    .text-center { text-align: center; }
+                    .text-left { text-align: left; }
+                    .text-right { text-align: right; }
+                    .separator { border-top: 1px dashed #000; margin: 8px 0; }
+                    .receipt-header { margin-bottom: 15px; }
+                    .receipt-body { margin: 15px 0; }
+                    .receipt-footer { margin-top: 15px; }
+                    table { width: 100%; border-collapse: collapse; }
+                    td { padding: 2px 0; }
+                    .item-line { display: flex; justify-content: space-between; }
+                    .bold { font-weight: bold; }
+                    @media print {
+                        body { margin: 0; padding: 5px; }
+                    }
+                </style>
+            </head>
+            <body>
+                ${receiptHTML}
+                <script>
+                    window.onload = function() {
+                        window.print();
+                        window.onafterprint = function() {
+                            window.close();
+                        }
+                    }
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    } else {
+        showAlert('Data struk tidak tersedia', 'warning');
+    }
+}
+
+// Member management functions
+function displayMembers() {
+    const container = document.getElementById('members-table-body');
+    if (!container) return;
+
+    container.innerHTML = members.map(member => `
+        <tr>
+            <td>${member.id}</td>
+            <td>${member.name}</td>
+            <td>${member.phone}</td>
+            <td>${member.points}</td>
+            <td>${new Date(member.created_at).toLocaleString('id-ID')}</td>
+            <td>
+                <button class="btn btn-sm btn-warning me-1" onclick="editMember(${member.id})">Edit</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteMember(${member.id})">Hapus</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function showAddMemberModal() {
+    const modalHTML = `
+        <form id="add-member-form">
+            <div class="mb-3">
+                <label for="member-name" class="form-label">Nama</label>
+                <input type="text" class="form-control" id="member-name" name="name" required>
+            </div>
+            <div class="mb-3">
+                <label for="member-phone" class="form-label">No. Telepon</label>
+                <input type="text" class="form-control" id="member-phone" name="phone" required>
+            </div>
+            <div class="mb-3">
+                <label for="member-points" class="form-label">Poin Awal</label>
+                <input type="number" class="form-control" id="member-points" name="points" value="0" min="0">
+            </div>
+        </form>
+    `;
+
+    showModal('Tambah Member', modalHTML, () => {
+        document.getElementById('add-member-form').addEventListener('submit', handleAddMember);
+    });
+}
+
+async function handleAddMember(e) {
+    e.preventDefault();
+
+    const formData = new FormData(e.target);
+    const memberData = Object.fromEntries(formData.entries());
+
+    try {
+        const response = await apiRequest('api/members.php', {
+            method: 'POST',
+            body: JSON.stringify(memberData)
+        });
+
+        if (response.success) {
+            await loadMembers();
+            hideModal();
+            alert('Member berhasil ditambahkan!');
+        } else {
+            throw new Error(response.error || 'Failed to add member');
+        }
+    } catch (error) {
+        console.error('Error saving member:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+// Settings functions
+async function loadSettings() {
+    try {
+        const response = await apiRequest('api/settings.php');
+        appSettings = response || {};
+        populateSettingsForm();
+    } catch (error) {
+        console.error('Error loading settings:', error);
+    }
+}
+
+function populateSettingsForm() {
+    const fields = [
+        'app_name', 'store_name', 'store_address', 'store_phone', 'store_email',
+        'store_website', 'store_social_media', 'receipt_header', 'receipt_footer',
+        'currency', 'logo_url', 'tax_rate', 'points_per_amount', 'points_value'
+    ];
+
+    fields.forEach(field => {
+        const element = document.getElementById(field);
+        if (element && appSettings[field] !== undefined) {
+            element.value = appSettings[field];
+        }
+    });
+
+    const taxEnabledElement = document.getElementById('tax_enabled');
+    if (taxEnabledElement) {
+        taxEnabledElement.checked = appSettings.tax_enabled === true || appSettings.tax_enabled === 1;
+    }
+}
+
+async function saveSettings() {
+    const formData = new FormData(document.getElementById('settings-form'));
+    const settingsData = Object.fromEntries(formData.entries());
+
+    // Convert checkbox to boolean
+    settingsData.tax_enabled = document.getElementById('tax_enabled').checked;
+
+    try {
+        const response = await apiRequest('api/settings.php', {
+            method: 'POST',
+            body: JSON.stringify(settingsData)
+        });
+
+        if (response.success) {
+            appSettings = {...appSettings, ...settingsData};
+            updateAppTitle();
+            alert('Pengaturan berhasil disimpan!');
+        } else {
+            throw new Error(response.error || 'Failed to save settings');
+        }
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+// Modal functions
+function showModal(title, content, callback = null) {
+    const modal = document.getElementById('dynamic-modal');
+    const modalTitle = document.getElementById('dynamic-modal-title');
+    const modalBody = document.getElementById('dynamic-modal-body');
+
+    if (modal && modalTitle && modalBody) {
+        modalTitle.textContent = title;
+        modalBody.innerHTML = content;
+
+        const bootstrapModal = new bootstrap.Modal(modal);
+        bootstrapModal.show();
+
+        if (callback) {
+            callback();
+        }
+    }
+}
+
+function hideModal() {
+    const modal = document.getElementById('dynamic-modal');
+    if (modal) {
+        const bootstrapModal = bootstrap.Modal.getInstance(modal);
+        if (bootstrapModal) {
+            bootstrapModal.hide();
+        }
+    }
+}
+
+// Utility functions
+function formatNumber(number) {
+    return new Intl.NumberFormat('id-ID').format(number);
+}
+
+// Navigation functions
+function showSection(sectionId) {
+    // Hide all sections
+    document.querySelectorAll('.section').forEach(section => {
+        section.style.display = 'none';
+    });
+
+    // Show selected section
+    const targetSection = document.getElementById(sectionId);
+    if (targetSection) {
+        targetSection.style.display = 'block';
+    }
+
+    // Update active nav
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('active');
+    });
+
+    const activeLink = document.querySelector(`[onclick="showSection('${sectionId}')"]`);
+    if (activeLink) {
+        activeLink.classList.add('active');
+    }
+
+    // Load section-specific data
+    switch(sectionId) {
+        case 'kasir':
+            loadProducts();
+            displayProducts();
+            break;
+        case 'members':
+            loadMembers();
+            displayMembers();
+            break;
+        case 'users':
+            loadUsers();
+            break;
+        case 'settings':
+            loadSettings();
+            break;
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Show default section
+    showSection('dashboard');
+});
+
+// Held transactions functions
+async function loadHeldTransactions() {
+    try {
+        const response = await apiRequest('api/held-transactions.php');
+        heldTransactions = response || [];
+        displayHeldTransactions();
+    } catch (error) {
+        console.error('Error loading held transactions:', error);
+        heldTransactions = [];
+    }
+}
+
+function displayHeldTransactions() {
+    const container = document.getElementById('held-transactions');
+    if (!container) return;
+
+    if (heldTransactions.length === 0) {
+        container.innerHTML = '<p class="text-muted">Tidak ada transaksi tertunda</p>';
+        return;
+    }
+
+    container.innerHTML = heldTransactions.map(transaction => `
+        <div class="card mb-2">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>Transaksi #${transaction.id}</strong><br>
+                        <small class="text-muted">${transaction.note || 'Tanpa catatan'}</small><br>
+                        <small class="text-muted">${new Date(transaction.created_at || transaction.held_at).toLocaleString('id-ID')}</small>
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-primary me-1" onclick="loadHeldTransaction(${transaction.id})">
+                            Muat
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteHeldTransaction(${transaction.id})">
+                            Hapus
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function holdTransaction() {
+    if (cart.length === 0) {
+        alert('Keranjang kosong!');
+        return;
+    }
+
+    const note = prompt('Masukkan catatan untuk transaksi tertunda:') || '';
+
+    try {
+        const response = await apiRequest('api/held-transactions.php', {
+            method: 'POST',
+            body: JSON.stringify({
+                cart: cart,
+                note: note
+            })
+        });
+
+        if (response.success) {
+            console.log('Transaction held successfully');
+            clearCart();
+            await loadHeldTransactions();
+        } else {
+            throw new Error(response.error || 'Failed to hold transaction');
+        }
+    } catch (error) {
+        console.error('Error saving held transaction:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+async function loadHeldTransaction(id) {
+    try {
+        const transaction = await apiRequest(`api/held-transactions.php?id=${id}`);
+        if (transaction && transaction.cart_data) {
+            cart = transaction.cart_data;
+            updateCartDisplay();
+
+            // Delete the held transaction after loading
+            await deleteHeldTransaction(id);
+        }
+    } catch (error) {
+        console.error('Error loading held transaction:', error);
+        alert('Error loading held transaction: ' + error.message);
+    }
+}
+
+async function deleteHeldTransaction(id) {
+    try {
+        const response = await apiRequest(`api/held-transactions.php?id=${id}`, {
+            method: 'DELETE'
+        });
+
+        if (response.success) {
+            await loadHeldTransactions();
+            await loadProducts(); // Refresh products to update display
+        } else {
+            throw new Error(response.error || 'Failed to delete held transaction');
+        }
+    } catch (error) {
+        console.error('Error deleting held transaction:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+// Product search
+function searchProducts() {
+    const searchTerm = document.getElementById('product-search').value.toLowerCase();
+    const filteredProducts = products.filter(product => 
+        product.name.toLowerCase().includes(searchTerm) ||
+        product.barcode.includes(searchTerm)
+    );
+    displayProducts(filteredProducts);
+}
+
+function displayProducts(productsToShow = products) {
+    const container = document.getElementById('products-grid');
+    if (!container) return;
+
+    container.innerHTML = productsToShow.map(product => `
+        <div class="col-md-4 col-sm-6 mb-3">
+            <div class="card product-card" onclick="addToCart(${product.id})">
+                <div class="card-body">
+                    <h6 class="card-title">${product.name}</h6>
+                    <p class="card-text">
+                        <small class="text-muted">Kode: ${product.barcode}</small><br>
+                        <strong>${appSettings.currency || 'Rp'} ${formatNumber(product.price)}</strong><br>
+                        <small class="text-muted">Stok: ${product.stock}</small>
+                    </p>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// User management functions
+function displayUsers() {
+    const container = document.getElementById('users-table-body');
+    if (!container) return;
+
+    container.innerHTML = users.map(user => `
+        <tr>
+            <td>${user.id}</td>
+            <td>${user.username}</td>
+            <td>${user.name}</td>
+            <td><span class="badge bg-${user.role === 'admin' ? 'danger' : 'primary'}">${user.role}</span></td>
+            <td>${new Date(user.created_at).toLocaleString('id-ID')}</td>
+            <td>
+                <button class="btn btn-sm btn-warning me-1" onclick="editUser(${user.id})">Edit</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id})">Hapus</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function showAddUserModal() {
+    const modalHTML = `
+        <form id="add-user-form">
+            <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" class="form-control" id="username" name="username" required>
+            </div>
+            <div class="mb-3">
+                <label for="name" class="form-label">Nama Lengkap</label>
+                <input type="text" class="form-control" id="name" name="name" required>
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" class="form-control" id="password" name="password" required>
+            </div>
+            <div class="mb-3">
+                <label for="role" class="form-label">Role</label>
+                <select class="form-control" id="role" name="role" required>
+                    <option value="kasir">Kasir</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+        </form>
+    `;
+
+    showModal('Tambah User', modalHTML, () => {
+        document.getElementById('add-user-form').addEventListener('submit', handleAddUser);
+    });
+}
+
+async function handleAddUser(e) {
+    e.preventDefault();
+
+    const formData = new FormData(e.target);
+    const userData = Object.fromEntries(formData.entries());
+
+    try {
+        const response = await apiRequest('api/users.php', {
+            method: 'POST',
+            body: JSON.stringify(userData)
+        });
+
+        if (response.success) {
+            await loadUsers();
+            hideModal();
+            alert('User berhasil ditambahkan!');
+        } else {
+            throw new Error(response.error || 'Failed to add user');
+        }
+    } catch (error) {
+        console.error('Error adding user:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+async function deleteUser(userId) {
+    if (!confirm('Yakin ingin menghapus user ini?')) return;
+
+    try {
+        const response = await apiRequest(`api/users.php?id=${userId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.success) {
+            await loadUsers();
+            alert('User berhasil dihapus!');
+        } else {
+            throw new Error(response.error || 'Failed to delete user');
+        }
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+// Member management functions
+function displayMembers() {
+    const container = document.getElementById('members-table-body');
+    if (!container) return;
+
+    container.innerHTML = members.map(member => `
+        <tr>
+            <td>${member.id}</td>
+            <td>${member.name}</td>
+            <td>${member.phone}</td>
+            <td>${member.points}</td>
+            <td>${new Date(member.created_at).toLocaleString('id-ID')}</td>
+            <td>
+                <button class="btn btn-sm btn-warning me-1" onclick="editMember(${member.id})">Edit</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteMember(${member.id})">Hapus</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function showAddMemberModal() {
+    const modalHTML = `
+        <form id="add-member-form">
+            <div class="mb-3">
+                <label for="member-name" class="form-label">Nama</label>
+                <input type="text" class="form-control" id="member-name" name="name" required>
+            </div>
+            <div class="mb-3">
+                <label for="member-phone" class="form-label">No. Telepon</label>
+                <input type="text" class="form-control" id="member-phone" name="phone" required>
+            </div>
+            <div class="mb-3">
+                <label for="member-points" class="form-label">Poin Awal</label>
+                <input type="number" class="form-control" id="member-points" name="points" value="0" min="0">
+            </div>
+        </form>
+    `;
+
+    showModal('Tambah Member', modalHTML, () => {
+        document.getElementById('add-member-form').addEventListener('submit', handleAddMember);
+    });
+}
+
+async function handleAddMember(e) {
+    e.preventDefault();
+
+    const formData = new FormData(e.target);
+    const memberData = Object.fromEntries(formData.entries());
+
+    try {
+        const response = await apiRequest('api/members.php', {
+            method: 'POST',
+            body: JSON.stringify(memberData)
+        });
+
+        if (response.success) {
+            await loadMembers();
+            hideModal();
+            alert('Member berhasil ditambahkan!');
+        } else {
+            throw new Error(response.error || 'Failed to add member');
+        }
+    } catch (error) {
+        console.error('Error saving member:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+// Settings functions
+async function loadSettings() {
+    try {
+        const response = await apiRequest('api/settings.php');
+        appSettings = response || {};
+        populateSettingsForm();
+    } catch (error) {
+        console.error('Error loading settings:', error);
+    }
+}
+
+function populateSettingsForm() {
+    const fields = [
+        'app_name', 'store_name', 'store_address', 'store_phone', 'store_email',
+        'store_website', 'store_social_media', 'receipt_header', 'receipt_footer',
+        'currency', 'logo_url', 'tax_rate', 'points_per_amount', 'points_value'
+    ];
+
+    fields.forEach(field => {
+        const element = document.getElementById(field);
+        if (element && appSettings[field] !== undefined) {
+            element.value = appSettings[field];
+        }
+    });
+
+    const taxEnabledElement = document.getElementById('tax_enabled');
+    if (taxEnabledElement) {
+        taxEnabledElement.checked = appSettings.tax_enabled === true || appSettings.tax_enabled === 1;
+    }
+}
+
+async function saveSettings() {
+    const formData = new FormData(document.getElementById('settings-form'));
+    const settingsData = Object.fromEntries(formData.entries());
+
+    // Convert checkbox to boolean
+    settingsData.tax_enabled = document.getElementById('tax_enabled').checked;
+
+    try {
+        const response = await apiRequest('api/settings.php', {
+            method: 'POST',
+            body: JSON.stringify(settingsData)
+        });
+
+        if (response.success) {
+            appSettings = {...appSettings, ...settingsData};
+            updateAppTitle();
+            alert('Pengaturan berhasil disimpan!');
+        } else {
+            throw new Error(response.error || 'Failed to save settings');
+        }
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+// Modal functions
+function showModal(title, content, callback = null) {
+    const modal = document.getElementById('dynamic-modal');
+    const modalTitle = document.getElementById('dynamic-modal-title');
+    const modalBody = document.getElementById('dynamic-modal-body');
+
+    if (modal && modalTitle && modalBody) {
+        modalTitle.textContent = title;
+        modalBody.innerHTML = content;
+
+        const bootstrapModal = new bootstrap.Modal(modal);
+        bootstrapModal.show();
+
+        if (callback) {
+            callback();
+        }
+    }
+}
+
+function hideModal() {
+    const modal = document.getElementById('dynamic-modal');
+    if (modal) {
+        const bootstrapModal = bootstrap.Modal.getInstance(modal);
+        if (bootstrapModal) {
+            bootstrapModal.hide();
+        }
+    }
+}
+
+// Utility functions
+function formatNumber(number) {
+    return new Intl.NumberFormat('id-ID').format(number);
+}
+
+// Navigation functions
+function showSection(sectionId) {
+    // Hide all sections
+    document.querySelectorAll('.section').forEach(section => {
+        section.style.display = 'none';
+    });
+
+    // Show selected section
+    const targetSection = document.getElementById(sectionId);
+    if (targetSection) {
+        targetSection.style.display = 'block';
+    }
+
+    // Update active nav
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('active');
+    });
+
+    const activeLink = document.querySelector(`[onclick="showSection('${sectionId}')"]`);
+    if (activeLink) {
+        activeLink.classList.add('active');
+    }
+
+    // Load section-specific data
+    switch(sectionId) {
+        case 'kasir':
+            loadProducts();
+            displayProducts();
+            break;
+        case 'members':
+            loadMembers();
+            displayMembers();
+            break;
+        case 'users':
+            loadUsers();
+            break;
+        case 'settings':
+            loadSettings();
+            break;
+            case 'inventory':
+                loadInventory();
+                break;
+        case 'transactions':
+            loadTransactions();
+            break;
+        case 'dashboard':
+            loadDashboardStats();
+            break;
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Show default section
+    showSection('dashboard');
+});
+
+// Transaction functions
+async function loadTransactions() {
+    try {
+        transactions = await apiRequest('api/transactions.php');
+        displayTransactions();
+    } catch (error) {
+        console.error('Error loading transactions:', error);
+        showAlert('Gagal memuat data transaksi', 'danger');
+    }
+}
+
+function displayTransactions() {
+    const tbody = document.getElementById('transactions-table-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = transactions.map(transaction => `
+        <tr>
+            <td>${transaction.id}</td>
+            <td>${new Date(transaction.transaction_date).toLocaleString('id-ID')}</td>
+            <td>${appSettings.currency || 'Rp'} ${formatNumber(transaction.total)}</td>
+        </tr>
+    `).join('');
+}
+
+// Inventory functions
+async function loadInventory() {
+    try {
+        inventory = await apiRequest('api/inventory.php');
+        displayInventoryData(inventory);
+    } catch (error) {
+        console.error('Error loading inventory:', error);
+        showAlert('Gagal memuat data inventory', 'danger');
+    }
+}
+
+function displayInventoryData(inventoryData) {
+    const tbody = document.getElementById('inventory-table-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = inventoryData.map(item => `
+        <tr>
+            <td>${item.id}</td>
+            <td>${item.product_name}</td>
+            <td>${item.quantity}</td>
+            <td>${new Date(item.created_at).toLocaleString('id-ID')}</td>
+        </tr>
+    `).join('');
+}
+
+// Dashboard functions
+async function loadDashboardStats() {
+    try {
+        const stats = await apiRequest('api/dashboard.php');
+
+        document.getElementById('total-products').textContent = stats.total_products || 0;
+        document.getElementById('today-transactions').textContent = stats.today_transactions || 0;
+        document.getElementById('today-revenue').textContent = `${appSettings.currency || 'Rp'} ${formatNumber(stats.today_revenue || 0)}`;
+        document.getElementById('monthly-revenue').textContent = `${appSettings.currency || 'Rp'} ${formatNumber(stats.monthly_revenue || 0)}`;
+    } catch (error) {
+        console.error('Error loading dashboard stats:', error);
+        showAlert('Gagal memuat statistik dashboard', 'danger');
+    }
+}
+
+// Mobile menu functions
+function toggleMobileMenu() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.querySelector('.mobile-overlay');
+    sidebar.classList.add('show');
+    overlay.classList.add('show');
+}
+
+function closeMobileMenu() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.querySelector('.mobile-overlay');
+    sidebar.classList.remove('show');
+    overlay.classList.remove('show');
+}

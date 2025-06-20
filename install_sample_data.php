@@ -99,19 +99,19 @@ try {
     } catch (Exception $e) {
         // Column might already exist
     }
-    
+
     try {
         $db->exec("ALTER TABLE transactions ADD COLUMN member_id INTEGER DEFAULT NULL");
     } catch (Exception $e) {
         // Column might already exist
     }
-    
+
     try {
         $db->exec("ALTER TABLE transactions ADD COLUMN payment_method TEXT DEFAULT 'cash'");
     } catch (Exception $e) {
         // Column might already exist
     }
-    
+
     try {
         $db->exec("ALTER TABLE transaction_items ADD COLUMN discount REAL DEFAULT 0");
     } catch (Exception $e) {
@@ -262,9 +262,9 @@ try {
     }
     echo "✓ Installed {$inventoryCount} inventory logs\n\n";
 
-    // Sample app settings
-    echo "⚙️ Installing sample app settings...\n";
-    $sampleSettings = [
+    // App settings
+    echo "⚙️ Installing app settings...\n";
+    $settingsData = [
         'Kasir Digital Pro',
         'Toko Serba Ada Sejahtera',
         'Jl. Merdeka No. 123, Jakarta Pusat, DKI Jakarta 10110',
@@ -277,15 +277,20 @@ try {
         'Rp',
         '',
         false,
-        10.0
+        10.0,
+        10000, // points_per_amount
+        1 // points_value
     ];
 
-    $settingsStmt = $db->prepare("INSERT OR IGNORE INTO app_settings (app_name, store_name, store_address, store_phone, store_email, store_website, store_social_media, receipt_header, receipt_footer, currency, logo_url, tax_enabled, tax_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    if ($settingsStmt->execute($sampleSettings)) {
+    $settingsStmt = $db->prepare("INSERT OR IGNORE INTO app_settings 
+        (app_name, store_name, store_address, store_phone, store_email, store_website, store_social_media, 
+         receipt_header, receipt_footer, currency, logo_url, tax_enabled, tax_rate, points_per_amount, points_value, created_at, updated_at) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))");
+    if ($settingsStmt->execute($settingsData)) {
         echo "  → Pengaturan aplikasi berhasil diinstall\n";
-        echo "    • Nama Aplikasi: {$sampleSettings[0]}\n";
-        echo "    • Nama Toko: {$sampleSettings[1]}\n";
-        echo "    • Pajak: " . ($sampleSettings[11] ? "Aktif ({$sampleSettings[12]}%)" : "Tidak Aktif") . "\n";
+        echo "    • Nama Aplikasi: {$settingsData[0]}\n";
+        echo "    • Nama Toko: {$settingsData[1]}\n";
+        echo "    • Pajak: " . ($settingsData[11] ? "Aktif ({$settingsData[12]}%)" : "Tidak Aktif") . "\n";
     }
     echo "✓ Sample settings installed\n\n";
 

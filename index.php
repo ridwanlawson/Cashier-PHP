@@ -845,8 +845,7 @@ $user = $auth->getUser();
                             </div>
                         </div>
                         <div class="col-lg-4 col-md-12">
-                            <!-- Keranjang - Paling Atas -->
-                            <div class="card mb-3 glow">
+                            <!-- Keranjang - Paling Atas --><div class="card mb-3 glow">
                                 <div class="card-header">
                                     <h5><i class="fas fa-shopping-cart"></i> Keranjang</h5>
                                 </div>
@@ -1123,6 +1122,26 @@ $user = $auth->getUser();
                                             <textarea class="form-control" id="receipt-footer" rows="2" required></textarea>
                                         </div>
                                     </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="tax_rate" class="form-label">Persentase Pajak (%)</label>
+                                <input type="number" class="form-control" id="tax_rate" name="tax_rate" step="0.01" min="0" max="100">
+                            </div>
+
+                            <h6 class="mt-4 mb-3">Pengaturan Sistem Poin</h6>
+                            <div class="mb-3">
+                                <label for="points_per_amount" class="form-label">Belanja Per Berapa Rupiah untuk 1 Poin</label>
+                                <input type="number" class="form-control" id="points_per_amount" name="points_per_amount" min="1" value="10000">
+                                <small class="form-text text-muted">Contoh: 10000 = setiap belanja Rp 10.000 mendapat poin</small>
+                            </div>
+                            <div class="mb-3">
+                                <label for="points_value" class="form-label">Jumlah Poin yang Didapat</label>
+                                <input type="number" class="form-control" id="points_value" name="points_value" min="1" value="1">
+                                <small class="form-text text-muted">Contoh: 1 = mendapat 1 poin setiap kelipatan belanja</small>
+                            </div>
+                        </div>
                                 </div>
                                 <div class="d-flex justify-content-between">
                                     <button type="button" class="btn btn-secondary" onclick="loadSettings()">

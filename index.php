@@ -660,10 +660,13 @@ if (!$user || empty($user)) {
                 </div>
 
                 <div class="user-info-sidebar mb-3 p-2" style="background: var(--bg-tertiary); border-radius: 8px; border: 1px solid var(--border-color);">
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="fas fa-user-circle me-2 text-cyan"></i>
-                        <small class="text-truncate"><?= htmlspecialchars($user['name']) ?></small>
-                    </div>
+                    <div class="user-info d-flex align-items-center">
+                            <i class="fas fa-user-circle me-2 text-cyan"></i>
+                            <div>
+                                <div class="fw-bold user-name"><?php echo htmlspecialchars($user['name']); ?></div>
+                                <small class="text-secondary user-role"><?php echo ucfirst($user['role']); ?></small>
+                            </div>
+                        </div>
                     <div class="d-flex justify-content-between align-items-center">
                         <small class="text-secondary"><?= ucfirst($user['role']) ?></small>
                         <a href="logout.php" class="btn btn-outline-danger btn-sm" title="Logout">

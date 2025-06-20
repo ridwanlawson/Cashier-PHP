@@ -1598,6 +1598,7 @@ function printCurrentReceipt() {
 
 // Member management functions
 let selectedMember = null;
+let currentMembers = [];
 
 async function searchMember() {
     const searchTerm = document.getElementById('member-search').value.trim();
@@ -1692,10 +1693,8 @@ function holdTransaction() {
     }
     
     const transactionData = {
-        items: [...cart],
-        member: selectedMember,
-        payment_method: document.getElementById('payment-method').value,
-        held_at: new Date().toISOString()
+        cart: [...cart],
+        note: 'Transaksi ditahan pada ' + new Date().toLocaleString('id-ID')
     };
     
     // Save to held transactions
@@ -1720,6 +1719,7 @@ async function saveHeldTransaction(transactionData) {
         }
     } catch (error) {
         console.error('Error saving held transaction:', error);
+        showAlert('Gagal menyimpan transaksi tertunda', 'danger');
     }
 }
 
@@ -1750,8 +1750,9 @@ function displayHeldTransactionsModal(transactions) {
     } else {
         modalHTML += '<div class="list-group">';
         transactions.forEach(transaction => {
-            const itemCount = transaction.items ? transaction.items.length : 0;
-            const total = transaction.items ? transaction.items.reduce((sum, item) => sum + item.subtotal, 0) : 0;
+            const cartData = transaction.cart_data || [];
+            const itemCount = Array.isArray(cartData) ? cartData.length : 0;
+            const total = Array.isArray(cartData) ? cartData.reduce((sum, item) => sum + (item.subtotal || 0), 0) : 0;
             
             modalHTML += `
                 <div class="list-group-item">
@@ -1759,8 +1760,8 @@ function displayHeldTransactionsModal(transactions) {
                         <div>
                             <strong>Transaksi #${transaction.id}</strong><br>
                             <small class="text-muted">
-                                ${itemCount} item(s) - ${new Date(transaction.held_at).toLocaleString('id-ID')}
-                                ${transaction.member ? `<br>Member: ${transaction.member.name}` : ''}
+                                ${itemCount} item(s) - ${new Date(transaction.created_at).toLocaleString('id-ID')}<br>
+                                ${transaction.note || 'Tidak ada catatan'}
                             </small>
                         </div>
                         <div class="text-end">
@@ -1806,24 +1807,14 @@ function displayHeldTransactionsModal(transactions) {
 
 async function resumeTransaction(transactionId) {
     try {
-        const transaction = await apiRequest(`api/held-transactions.php?id=${transactionId}`);
+        const response = await apiRequest(`api/held-transactions.php?id=${transactionId}`);
         
-        if (transaction) {
+        if (response) {
             // Clear current cart
             cart = [];
             
             // Load held transaction data
-            cart = transaction.items || [];
-            
-            // Set member if exists
-            if (transaction.member) {
-                selectMember(transaction.member);
-            }
-            
-            // Set payment method
-            if (transaction.payment_method) {
-                document.getElementById('payment-method').value = transaction.payment_method;
-            }
+            cart = response.cart_data || [];
             
             // Update cart display
             updateCart();
@@ -1832,7 +1823,8 @@ async function resumeTransaction(transactionId) {
             await deleteHeldTransaction(transactionId, false);
             
             // Close modal
-            bootstrap.Modal.getInstance(document.getElementById('heldTransactionsModal')).hide();
+            const modal = bootstrap.Modal.getInstance(document.getElementById('heldTransactionsModal'));
+            if (modal) modal.hide();
             
             // Switch to cashier page
             showPage('cashier');
@@ -1870,7 +1862,8 @@ async function deleteHeldTransaction(transactionId, showMessage = true) {
 async function loadMembers() {
     try {
         const members = await apiRequest('api/members.php');
-        displayMembers(members);
+        currentMembers = members || [];
+        displayMembers(currentMembers);
     } catch (error) {
         console.error('Error loading members:', error);
         showAlert('Gagal memuat data member', 'danger');
@@ -1937,7 +1930,7 @@ function showAddMemberModal() {
 
 function editMember(id) {
     // Get member data from current loaded members
-    const member = window.currentMembers?.find(m => m.id === id);
+    const member = currentMembers?.find(m => m.id === id);
     if (!member) {
         showAlert('Data member tidak ditemukan', 'danger');
         return;

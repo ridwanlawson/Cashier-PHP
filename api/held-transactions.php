@@ -17,18 +17,34 @@ try {
 
     switch($method) {
         case 'GET':
-            // Get held transactions for current user
-            $query = "SELECT * FROM held_transactions WHERE user_id = ? ORDER BY created_at DESC";
-            $stmt = $db->prepare($query);
-            $stmt->execute([$user['id']]);
-            $held = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach($held as &$transaction) {
-                $transaction['id'] = (int)$transaction['id'];
-                $transaction['cart_data'] = json_decode($transaction['cart_data'], true);
+            if (isset($_GET['id'])) {
+                // Get specific held transaction
+                $query = "SELECT * FROM held_transactions WHERE id = ?";
+                $stmt = $db->prepare($query);
+                $stmt->execute([$_GET['id']]);
+                $transaction = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($transaction) {
+                    $transaction['id'] = (int)$transaction['id'];
+                    $transaction['cart_data'] = json_decode($transaction['cart_data'], true);
+                    echo json_encode($transaction);
+                } else {
+                    echo json_encode(null);
+                }
+            } else {
+                // Get all held transactions
+                $query = "SELECT * FROM held_transactions ORDER BY created_at DESC";
+                $stmt = $db->prepare($query);
+                $stmt->execute();
+                $held = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach($held as &$transaction) {
+                    $transaction['id'] = (int)$transaction['id'];
+                    $transaction['cart_data'] = json_decode($transaction['cart_data'], true);
+                }
+                
+                echo json_encode($held);
             }
-            
-            echo json_encode($held);
             break;
             
         case 'POST':
@@ -39,10 +55,9 @@ try {
                 throw new Exception('Cart data and note are required');
             }
             
-            $query = "INSERT INTO held_transactions (user_id, cart_data, note, created_at) VALUES (?, ?, ?, datetime('now'))";
+            $query = "INSERT INTO held_transactions (cart_data, note, created_at) VALUES (?, ?, datetime('now'))";
             $stmt = $db->prepare($query);
             $result = $stmt->execute([
-                $user['id'],
                 json_encode($data['cart']),
                 $data['note']
             ]);
@@ -59,9 +74,9 @@ try {
                 throw new Exception('Transaction ID required');
             }
             
-            $query = "DELETE FROM held_transactions WHERE id = ? AND user_id = ?";
+            $query = "DELETE FROM held_transactions WHERE id = ?";
             $stmt = $db->prepare($query);
-            $result = $stmt->execute([$_GET['id'], $user['id']]);
+            $result = $stmt->execute([$_GET['id']]);
             
             if ($result) {
                 echo json_encode(['success' => true]);

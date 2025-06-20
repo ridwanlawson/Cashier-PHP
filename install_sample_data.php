@@ -88,10 +88,9 @@ try {
     // Held transactions table
     $createHeldTransactionsTable = "CREATE TABLE IF NOT EXISTS held_transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        items TEXT NOT NULL,
-        member TEXT,
-        payment_method TEXT DEFAULT 'cash',
-        held_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        cart_data TEXT NOT NULL,
+        note TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )";
     $db->exec($createHeldTransactionsTable);
 

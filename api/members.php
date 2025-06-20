@@ -1,20 +1,15 @@
-The provided changes focus on fixing PHP session handling, header management, and duplicate JSON output within the members.php file.
-```
-
-```php
 <?php
 ob_start(); // Start output buffering to prevent header issues
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
-require_once '../auth.php';
-require_once '../config/database.php';
 
 // Only start session if one hasn't been started already
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+require_once '../auth.php';
+require_once '../config/database.php';
+
+// Set headers only if they haven't been sent
 if (!headers_sent()) {
     header('Content-Type: application/json');
     header('Access-Control-Allow-Origin: *');
@@ -22,6 +17,7 @@ if (!headers_sent()) {
     header('Access-Control-Allow-Headers: Content-Type');
 }
 
+// Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
@@ -46,24 +42,33 @@ try {
     switch($method) {
         case 'GET':
             if (isset($_GET['search'])) {
-                $search = '%' . $_GET['search'] . '%';
+                // Search members
+                $searchTerm = '%' . $_GET['search'] . '%';
                 $query = "SELECT * FROM members WHERE name LIKE ? OR phone LIKE ? ORDER BY name ASC LIMIT 10";
                 $stmt = $db->prepare($query);
-                $stmt->execute([$search, $search]);
+                $stmt->execute([$searchTerm, $searchTerm]);
+                $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach($members as &$member) {
+                    $member['id'] = (int)$member['id'];
+                    $member['points'] = (int)$member['points'];
+                }
+
+                echo json_encode($members);
             } else {
+                // Get all members
                 $query = "SELECT * FROM members ORDER BY created_at DESC";
                 $stmt = $db->prepare($query);
                 $stmt->execute();
+                $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach($members as &$member) {
+                    $member['id'] = (int)$member['id'];
+                    $member['points'] = (int)$member['points'];
+                }
+
+                echo json_encode($members);
             }
-
-            $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            foreach($members as &$member) {
-                $member['id'] = (int)$member['id'];
-                $member['points'] = (int)$member['points'];
-            }
-
-            echo json_encode($members);
             break;
 
         case 'POST':
@@ -119,142 +124,8 @@ try {
                 throw new Exception('Invalid JSON data: ' . json_last_error_msg());
             }
 
-            $required = ['id', 'name', 'phone'];
-            foreach ($required as $field) {
-                if (!isset($data[$field]) || (is_string($data[$field]) && trim($data[$field]) === '')) {
-                    throw new Exception("Field '$field' is required");
-                }
-            }
-
-            // Check for duplicate phone (excluding current member)
-            $query = "SELECT id FROM members WHERE phone = ? AND id != ?";
-            $stmt = $db->prepare($query);
-            $stmt->execute([$data['phone'], (int)$data['id']]);
-            if ($stmt->fetch()) {
-                throw new Exception('Phone number already exists');
-            }
-
-            $query = "UPDATE members SET name = ?, phone = ?, points = ? WHERE id = ?";
-            $stmt = $db->prepare($query);
-            $result = $stmt->execute([
-                trim($data['name']),
-                trim($data['phone']),
-                (int)($data['points'] ?? 0),
-                (int)$data['id']
-            ]);
-
-            if($result) {
-                echo json_encode(['success' => true, 'message' => 'Member updated successfully']);
-            } else {
-                echo json_encode(['success' => false, 'error' => 'Failed to update member']);
-            }
-            break;
-
-        case 'DELETE':
-            if (!isset($_GET['id'])) {
+            if (!isset($data['id'])) {
                 throw new Exception('Member ID is required');
-            }
-
-            $id = (int)$_GET['id'];
-
-            $query = "DELETE FROM members WHERE id = ?";
-            $stmt = $db->prepare($query);
-            $result = $stmt->execute([$id]);
-
-            if($result) {
-                echo json_encode(['success' => true, 'message' => 'Member deleted successfully']);
-            } else {
-                echo json_encode(['success' => false, 'error' => 'Failed to delete member']);
-            }
-            break;
-
-        default:
-            throw new Exception('Method not allowed');
-    }
-
-} catch (Exception $e) {
-    ob_clean(); // Clear any buffered output
-    echo json_encode([
-        'success' => false,
-        'error' => $e->getMessage()
-    ]);
-}
-
-ob_end_flush(); // Send the buffered output
-?>
-```<?php
-ob_start(); // Start output buffering to prevent header issues
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
-require_once '../auth.php';
-require_once '../config/database.php';
-
-// Only start session if one hasn't been started already
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-if (!headers_sent()) {
-    header('Content-Type: application/json');
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type');
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    exit(0);
-}
-
-try {
-    $auth = new Auth();
-    if (!$auth->isLoggedIn()) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'error' => 'Unauthorized']);
-        exit;
-    }
-
-    $database = new Database();
-    $db = $database->getConnection();
-
-    if (!$db) {
-        throw new Exception('Database connection failed');
-    }
-
-    $method = $_SERVER['REQUEST_METHOD'];
-
-    switch($method) {
-        case 'GET':
-            if (isset($_GET['search'])) {
-                $search = '%' . $_GET['search'] . '%';
-                $query = "SELECT * FROM members WHERE name LIKE ? OR phone LIKE ? ORDER BY name ASC LIMIT 10";
-                $stmt = $db->prepare($query);
-                $stmt->execute([$search, $search]);
-            } else {
-                $query = "SELECT * FROM members ORDER BY created_at DESC";
-                $stmt = $db->prepare($query);
-                $stmt->execute();
-            }
-
-            $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            foreach($members as &$member) {
-                $member['id'] = (int)$member['id'];
-                $member['points'] = (int)$member['points'];
-            }
-
-            echo json_encode($members);
-            break;
-
-        case 'POST':
-            $input = file_get_contents("php://input");
-            if (!$input) {
-                throw new Exception('No input data received');
-            }
-
-            $data = json_decode($input, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new Exception('Invalid JSON data: ' . json_last_error_msg());
             }
 
             $required = ['name', 'phone'];
@@ -264,58 +135,17 @@ try {
                 }
             }
 
-            // Check for duplicate phone
-            $query = "SELECT id FROM members WHERE phone = ?";
-            $stmt = $db->prepare($query);
-            $stmt->execute([$data['phone']]);
-            if ($stmt->fetch()) {
-                throw new Exception('Phone number already exists');
-            }
-
-            $query = "INSERT INTO members (name, phone, points, created_at) VALUES (?, ?, ?, datetime('now'))";
-            $stmt = $db->prepare($query);
-
-            $result = $stmt->execute([
-                trim($data['name']),
-                trim($data['phone']),
-                (int)($data['points'] ?? 0)
-            ]);
-
-            if($result) {
-                echo json_encode(['success' => true, 'message' => 'Member added successfully']);
-            } else {
-                echo json_encode(['success' => false, 'error' => 'Failed to add member']);
-            }
-            break;
-
-        case 'PUT':
-            $input = file_get_contents("php://input");
-            if (!$input) {
-                throw new Exception('No input data received');
-            }
-
-            $data = json_decode($input, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new Exception('Invalid JSON data: ' . json_last_error_msg());
-            }
-
-            $required = ['id', 'name', 'phone'];
-            foreach ($required as $field) {
-                if (!isset($data[$field]) || (is_string($data[$field]) && trim($data[$field]) === '')) {
-                    throw new Exception("Field '$field' is required");
-                }
-            }
-
             // Check for duplicate phone (excluding current member)
             $query = "SELECT id FROM members WHERE phone = ? AND id != ?";
             $stmt = $db->prepare($query);
-            $stmt->execute([$data['phone'], (int)$data['id']]);
+            $stmt->execute([$data['phone'], $data['id']]);
             if ($stmt->fetch()) {
                 throw new Exception('Phone number already exists');
             }
 
             $query = "UPDATE members SET name = ?, phone = ?, points = ? WHERE id = ?";
             $stmt = $db->prepare($query);
+
             $result = $stmt->execute([
                 trim($data['name']),
                 trim($data['phone']),
@@ -362,4 +192,3 @@ try {
 
 ob_end_flush(); // Send the buffered output
 ?>
-</replit_final_file>

@@ -1,3 +1,4 @@
+
 // Global variables
 let cart = [];
 let products = [];
@@ -91,6 +92,62 @@ function setupEventListeners() {
     });
 }
 
+// Page navigation
+function showPage(pageId, linkElement) {
+    // Hide all pages
+    document.querySelectorAll('.page-content').forEach(page => {
+        page.classList.add('d-none');
+    });
+
+    // Show selected page
+    const targetPage = document.getElementById(pageId);
+    if (targetPage) {
+        targetPage.classList.remove('d-none');
+    }
+
+    // Update active nav link
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('active');
+    });
+
+    if (linkElement) {
+        linkElement.classList.add('active');
+    }
+
+    // Load page specific data
+    switch(pageId) {
+        case 'products':
+            loadProducts();
+            displayProducts();
+            break;
+        case 'cashier':
+            loadProducts();
+            updateCart();
+            break;
+        case 'transactions':
+            loadTransactions();
+            break;
+        case 'inventory':
+            loadInventory();
+            break;
+        case 'users':
+            loadUsers();
+            break;
+        case 'members':
+            loadMembers();
+            break;
+        case 'settings':
+            loadSettings();
+            break;
+        case 'dashboard':
+            loadDashboardStats();
+            break;
+    }
+
+    // Close mobile menu if open
+    closeMobileMenu();
+}
+
 // Load app settings
 async function loadAppSettings() {
     console.log('Loading app settings...');
@@ -179,62 +236,6 @@ function showAlert(message, type = 'info') {
             alertDiv.remove();
         }
     }, 5000);
-}
-
-// Page navigation
-function showPage(pageId, linkElement) {
-    // Hide all pages
-    document.querySelectorAll('.page-content').forEach(page => {
-        page.classList.add('d-none');
-    });
-
-    // Show selected page
-    const targetPage = document.getElementById(pageId);
-    if (targetPage) {
-        targetPage.classList.remove('d-none');
-    }
-
-    // Update active nav link
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.classList.remove('active');
-    });
-
-    if (linkElement) {
-        linkElement.classList.add('active');
-    }
-
-    // Load page specific data
-    switch(pageId) {
-        case 'products':
-            loadProducts();
-            displayProducts();
-            break;
-        case 'cashier':
-            loadProducts();
-            updateCart();
-            break;
-        case 'transactions':
-            loadTransactions();
-            break;
-        case 'inventory':
-            loadInventory();
-            break;
-        case 'users':
-            loadUsers();
-            break;
-        case 'members':
-            loadMembers();
-            break;
-        case 'settings':
-            loadSettings();
-            break;
-        case 'dashboard':
-            loadDashboardStats();
-            break;
-    }
-
-    // Close mobile menu if open
-    closeMobileMenu();
 }
 
 // Theme toggle
@@ -1725,16 +1726,7 @@ function printCurrentReceipt() {
 }
 
 // Member management functions
-let currentMembers = [];
-
-async function searchMember() {
-    const searchTerm = document.getElementById('member-search').value.trim();
-
-    if (searchTerm.length < 2) {
-        clearMember();
-        return;
-    }
-
+async function searchMembers(searchTerm) {
     try {
         const members = await apiRequest(`api/members.php?search=${encodeURIComponent(searchTerm)}`);
         displayMemberSuggestions(members);
@@ -1808,6 +1800,11 @@ function clearMember() {
     if (container) container.innerHTML = '';
 }
 
+function clearMemberSuggestions() {
+    const container = document.getElementById('member-suggestions');
+    if (container) container.innerHTML = '';
+}
+
 // Payment method functions
 function updatePaymentMethod() {
     const paymentMethod = document.getElementById('payment-method');
@@ -1819,8 +1816,6 @@ function updatePaymentMethod() {
 }
 
 // Held transactions functions
-let heldTransactions = [];
-
 function holdTransaction() {
     if (cart.length === 0) {
         showAlert('Keranjang kosong, tidak ada yang bisa ditahan!', 'warning');
@@ -1828,7 +1823,7 @@ function holdTransaction() {
     }
 
     const transactionData = {
-        cart: [...cart],
+        cart_data: [...cart],
         note: 'Transaksi ditahan pada ' + new Date().toLocaleString('id-ID')
     };
 
@@ -1860,8 +1855,8 @@ async function saveHeldTransaction(transactionData) {
 
 async function showHeldTransactions() {
     try {
-        const heldTransactions = await apiRequest('api/held-transactions.php');
-        displayHeldTransactionsModal(heldTransactions);
+        const heldTransactionsData = await apiRequest('api/held-transactions.php');
+        displayHeldTransactionsModal(heldTransactionsData);
     } catch (error) {
         console.error('Error loading held transactions:', error);
         showAlert('Gagal memuat transaksi tertunda', 'danger');
@@ -1993,34 +1988,71 @@ async function deleteHeldTransaction(transactionId, showMessage = true) {
     }
 }
 
-// Utility functions
-function formatNumber(number) {
-    return new Intl.NumberFormat('id-ID').format(number);
+// Load held transactions on initialization
+async function loadHeldTransactions() {
+    // This function is called during initialization but doesn't need to display anything
+    // It's just here to maintain consistency with other load functions
 }
 
-function updatePaymentMethod() {
-    const paymentMethod = document.getElementById('payment-method');
-    if (paymentMethod) {
-        console.log('Payment method changed to:', paymentMethod.value);
+// Members functions
+async function loadMembers() {
+    try {
+        const response = await apiRequest('api/members.php');
+        members = response || [];
+        displayMembers();
+    } catch (error) {
+        console.error('Error loading members:', error);
+        showAlert('Gagal memuat data member', 'danger');
     }
 }
 
-// Mobile menu functions
-function toggleMobileMenu() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.querySelector('.mobile-overlay');
-    sidebar.classList.add('show');
-    overlay.classList.add('show');
+function displayMembers() {
+    const tbody = document.getElementById('members-tbody');
+    if (!tbody) return;
+
+    // Destroy existing DataTable if it exists
+    if ($.fn.DataTable.isDataTable('#members-table')) {
+        $('#members-table').DataTable().destroy();
+    }
+
+    tbody.innerHTML = '';
+
+    if (!Array.isArray(members) || members.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center">Tidak ada data member</td></tr>';
+        return;
+    }
+
+    members.forEach(member => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${member.name}</td>
+            <td>${member.phone}</td>
+            <td>${member.points}</td>
+            <td>${new Date(member.created_at).toLocaleDateString('id-ID')}</td>
+            <td>
+                <button class="btn btn-warning btn-sm me-1" onclick="editMember(${member.id})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="deleteMember(${member.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+
+    // Initialize DataTable
+    setTimeout(() => {
+        $('#members-table').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
+            },
+            pageLength: 25,
+            responsive: true
+        });
+    }, 100);
 }
 
-function closeMobileMenu() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.querySelector('.mobile-overlay');
-    sidebar.classList.remove('show');
-    overlay.classList.remove('show');
-}
-
-// Additional required functions for the application to work properly
 function showAddMemberModal() {
     document.getElementById('memberModalTitle').textContent = 'Tambah Member';
     document.getElementById('memberForm').reset();
@@ -2105,130 +2137,22 @@ async function deleteMember(id) {
     }
 }
 
-function showAddUserModal() {
-    document.getElementById('userModalTitle').textContent = 'Tambah User';
-    document.getElementById('userForm').reset();
-    document.getElementById('user-id').value = '';
-    new bootstrap.Modal(document.getElementById('userModal')).show();
+// Utility functions
+function formatNumber(number) {
+    return new Intl.NumberFormat('id-ID').format(number);
 }
 
-function editUser(id) {
-    const user = users.find(u => u.id === id);
-    if (!user) return;
-
-    document.getElementById('userModalTitle').textContent = 'Edit User';
-    document.getElementById('user-id').value = user.id;
-    document.getElementById('user-username').value = user.username;
-    document.getElementById('user-name').value = user.name;
-    document.getElementById('user-password').value = '';
-    document.getElementById('user-role').value = user.role;
-
-    new bootstrap.Modal(document.getElementById('userModal')).show();
+// Mobile menu functions
+function toggleMobileMenu() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.querySelector('.mobile-overlay');
+    sidebar.classList.add('show');
+    overlay.classList.add('show');
 }
 
-async function saveUser() {
-    try {
-        const id = document.getElementById('user-id').value;
-        const userData = {
-            username: document.getElementById('user-username').value.trim(),
-            name: document.getElementById('user-name').value.trim(),
-            password: document.getElementById('user-password').value,
-            role: document.getElementById('user-role').value
-        };
-
-        if (!userData.username || !userData.name || !userData.role) {
-            showAlert('Username, nama, dan role harus diisi!', 'warning');
-            return;
-        }
-
-        if (!id && !userData.password) {
-            showAlert('Password harus diisi untuk user baru!', 'warning');
-            return;
-        }
-
-        let result;
-        if (id) {
-            userData.id = parseInt(id);
-            result = await apiRequest('api/users.php', {
-                method: 'PUT',
-                body: JSON.stringify(userData)
-            });
-        } else {
-            result = await apiRequest('api/users.php', {
-                method: 'POST',
-                body: JSON.stringify(userData)
-            });
-        }
-
-        if (result.success) {
-            showAlert(result.message, 'success');
-            bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
-            loadUsers();
-        } else {
-            showAlert(result.error, 'danger');
-        }
-    } catch (error) {
-        console.error('Error saving user:', error);
-        showAlert('Gagal menyimpan user: ' + error.message, 'danger');
-    }
-}
-
-async function deleteUser(id) {
-    if (!confirm('Apakah Anda yakin ingin menghapus user ini?')) return;
-
-    try {
-        const result = await apiRequest(`api/users.php?id=${id}`, {
-            method: 'DELETE'
-        });
-
-        if (result.success) {
-            showAlert(result.message, 'success');
-            loadUsers();
-        } else {
-            showAlert(result.error, 'danger');
-        }
-    } catch (error) {
-        console.error('Error deleting user:', error);
-        showAlert('Gagal menghapus user: ' + error.message, 'danger');
-    }
-}
-
-// Transaction functions implementation
-async function loadTransactions() {
-    try {
-        const response = await apiRequest('api/transactions.php');
-        transactions = response || [];
-        displayTransactions();
-    } catch (error) {
-        console.error('Error loading transactions:', error);
-        showAlert('Gagal memuat data transaksi', 'danger');
-    }
-}
-
-// Inventory functions implementation  
-async function loadInventory() {
-    try {
-        const response = await apiRequest('api/inventory.php');
-        inventory = response || [];
-        displayInventoryData(inventory);
-    } catch (error) {
-        console.error('Error loading inventory:', error);
-        showAlert('Gagal memuat data inventory', 'danger');
-    }
-}
-
-function populateStockProductSelect() {
-    const select = document.getElementById('stock-product');
-    if (!select) return;
-
-    select.innerHTML = '<option value="">-- Pilih Produk --</option>';
-
-    if (Array.isArray(products)) {
-        products.forEach(product => {
-            const option = document.createElement('option');
-            option.value = product.id;
-            option.textContent = `${product.name} (Stok: ${product.stock})`;
-            select.appendChild(option);
-        });
-    }
+function closeMobileMenu() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.querySelector('.mobile-overlay');
+    sidebar.classList.remove('show');
+    overlay.classList.remove('show');
 }

@@ -372,7 +372,7 @@ async function saveSettings() {
         if (result.success) {
             showAlert('Pengaturan berhasil disimpan!', 'success');
             appSettings = { ...appSettings, ...formData };
-            
+
             // Update cart display if we're on cashier page to reflect tax changes
             if (cart.length > 0) {
                 updateCart();
@@ -947,8 +947,7 @@ async function processTransaction() {
             }))
         };
 
-        const result = await apiRequest('api/transactions.php', {
-            method: 'POST',
+        const result = await apiRequest('api/transactions.php', {            method: 'POST',
             body: JSON.stringify(transactionData)
         });
 
@@ -1182,7 +1181,7 @@ async function viewTransactionDetail(transactionId) {
 
         // Show modal with table data
         document.getElementById('transaction-detail').innerHTML = tableHTML;
-        
+
         // Update modal footer to only have print button
         const modalFooter = document.querySelector('#transactionModal .modal-footer');
         if (modalFooter) {
@@ -1193,7 +1192,7 @@ async function viewTransactionDetail(transactionId) {
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
             `;
         }
-        
+
         new bootstrap.Modal(document.getElementById('transactionModal')).show();
 
     } catch (error) {
@@ -1725,17 +1724,16 @@ function printCurrentReceipt() {
 }
 
 // Member management functions
-let selectedMember = null;
 let currentMembers = [];
 
 async function searchMember() {
     const searchTerm = document.getElementById('member-search').value.trim();
-    
+
     if (searchTerm.length < 2) {
         clearMember();
         return;
     }
-    
+
     try {
         const members = await apiRequest(`api/members.php?search=${encodeURIComponent(searchTerm)}`);
         displayMemberSuggestions(members);
@@ -1760,16 +1758,16 @@ function displayMemberSuggestions(members) {
             }
         }
     }
-    
+
     if (!container) return;
-    
+
     container.innerHTML = '';
-    
+
     if (!members || members.length === 0) {
         container.innerHTML = '<div class="list-group-item">Member tidak ditemukan</div>';
         return;
     }
-    
+
     members.forEach(member => {
         const item = document.createElement('div');
         item.className = 'list-group-item list-group-item-action cursor-pointer';
@@ -1794,7 +1792,7 @@ function selectMember(member) {
         <strong>${member.name}</strong><br>
         <small>Tel: ${member.phone} | Poin: ${member.points}</small>
     `;
-    
+
     // Clear suggestions
     const container = document.getElementById('member-suggestions');
     if (container) container.innerHTML = '';
@@ -1804,7 +1802,7 @@ function clearMember() {
     selectedMember = null;
     document.getElementById('member-search').value = '';
     document.getElementById('selected-member').innerHTML = '';
-    
+
     const container = document.getElementById('member-suggestions');
     if (container) container.innerHTML = '';
 }
@@ -1827,19 +1825,19 @@ function holdTransaction() {
         showAlert('Keranjang kosong, tidak ada yang bisa ditahan!', 'warning');
         return;
     }
-    
+
     const transactionData = {
         cart: [...cart],
         note: 'Transaksi ditahan pada ' + new Date().toLocaleString('id-ID')
     };
-    
+
     // Save to held transactions
     saveHeldTransaction(transactionData);
-    
+
     // Clear current cart
     clearCart();
     clearMember();
-    
+
     showAlert('Transaksi berhasil ditahan!', 'success');
 }
 
@@ -1849,7 +1847,7 @@ async function saveHeldTransaction(transactionData) {
             method: 'POST',
             body: JSON.stringify(transactionData)
         });
-        
+
         if (result.success) {
             console.log('Transaction held successfully');
         }
@@ -1880,7 +1878,7 @@ function displayHeldTransactionsModal(transactions) {
                     </div>
                     <div class="modal-body">
     `;
-    
+
     if (!transactions || transactions.length === 0) {
         modalHTML += '<p class="text-center text-muted">Tidak ada transaksi tertunda</p>';
     } else {
@@ -1889,7 +1887,7 @@ function displayHeldTransactionsModal(transactions) {
             const cartData = transaction.cart_data || [];
             const itemCount = Array.isArray(cartData) ? cartData.length : 0;
             const total = Array.isArray(cartData) ? cartData.reduce((sum, item) => sum + (item.subtotal || 0), 0) : 0;
-            
+
             modalHTML += `
                 <div class="list-group-item">
                     <div class="d-flex justify-content-between align-items-center">
@@ -1917,7 +1915,7 @@ function displayHeldTransactionsModal(transactions) {
         });
         modalHTML += '</div>';
     }
-    
+
     modalHTML += `
                     </div>
                     <div class="modal-footer">
@@ -1927,16 +1925,16 @@ function displayHeldTransactionsModal(transactions) {
             </div>
         </div>
     `;
-    
+
     // Remove existing modal if any
     const existingModal = document.getElementById('heldTransactionsModal');
     if (existingModal) {
         existingModal.remove();
     }
-    
+
     // Add modal to body
     document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
+
     // Show modal
     new bootstrap.Modal(document.getElementById('heldTransactionsModal')).show();
 }
@@ -1944,27 +1942,27 @@ function displayHeldTransactionsModal(transactions) {
 async function resumeTransaction(transactionId) {
     try {
         const response = await apiRequest(`api/held-transactions.php?id=${transactionId}`);
-        
+
         if (response) {
             // Clear current cart
             cart = [];
-            
+
             // Load held transaction data
             cart = response.cart_data || [];
-            
+
             // Update cart display
             updateCart();
-            
+
             // Delete held transaction
             await deleteHeldTransaction(transactionId, false);
-            
+
             // Close modal
             const modal = bootstrap.Modal.getInstance(document.getElementById('heldTransactionsModal'));
             if (modal) modal.hide();
-            
+
             // Switch to cashier page
             showPage('cashier');
-            
+
             showAlert('Transaksi berhasil dipulihkan!', 'success');
         }
     } catch (error) {
@@ -1978,7 +1976,7 @@ async function deleteHeldTransaction(transactionId, showMessage = true) {
         const result = await apiRequest(`api/held-transactions.php?id=${transactionId}`, {
             method: 'DELETE'
         });
-        
+
         if (result.success) {
             if (showMessage) {
                 showAlert('Transaksi tertunda dihapus', 'info');
@@ -2290,600 +2288,6 @@ function printCurrentReceipt() {
         printWindow.document.close();
     } else {
         showAlert('Data struk tidak tersedia', 'warning');
-    }
-}
-
-// Member management functions
-function displayMembers() {
-    const container = document.getElementById('members-table-body');
-    if (!container) return;
-
-    container.innerHTML = members.map(member => `
-        <tr>
-            <td>${member.id}</td>
-            <td>${member.name}</td>
-            <td>${member.phone}</td>
-            <td>${member.points}</td>
-            <td>${new Date(member.created_at).toLocaleString('id-ID')}</td>
-            <td>
-                <button class="btn btn-sm btn-warning me-1" onclick="editMember(${member.id})">Edit</button>
-                <button class="btn btn-sm btn-danger" onclick="deleteMember(${member.id})">Hapus</button>
-            </td>
-        </tr>
-    `).join('');
-}
-
-function showAddMemberModal() {
-    const modalHTML = `
-        <form id="add-member-form">
-            <div class="mb-3">
-                <label for="member-name" class="form-label">Nama</label>
-                <input type="text" class="form-control" id="member-name" name="name" required>
-            </div>
-            <div class="mb-3">
-                <label for="member-phone" class="form-label">No. Telepon</label>
-                <input type="text" class="form-control" id="member-phone" name="phone" required>
-            </div>
-            <div class="mb-3">
-                <label for="member-points" class="form-label">Poin Awal</label>
-                <input type="number" class="form-control" id="member-points" name="points" value="0" min="0">
-            </div>
-        </form>
-    `;
-
-    showModal('Tambah Member', modalHTML, () => {
-        document.getElementById('add-member-form').addEventListener('submit', handleAddMember);
-    });
-}
-
-async function handleAddMember(e) {
-    e.preventDefault();
-
-    const formData = new FormData(e.target);
-    const memberData = Object.fromEntries(formData.entries());
-
-    try {
-        const response = await apiRequest('api/members.php', {
-            method: 'POST',
-            body: JSON.stringify(memberData)
-        });
-
-        if (response.success) {
-            await loadMembers();
-            hideModal();
-            alert('Member berhasil ditambahkan!');
-        } else {
-            throw new Error(response.error || 'Failed to add member');
-        }
-    } catch (error) {
-        console.error('Error saving member:', error);
-        alert('Error: ' + error.message);
-    }
-}
-
-// Settings functions
-async function loadSettings() {
-    try {
-        const response = await apiRequest('api/settings.php');
-        appSettings = response || {};
-        populateSettingsForm();
-    } catch (error) {
-        console.error('Error loading settings:', error);
-    }
-}
-
-function populateSettingsForm() {
-    const fields = [
-        'app_name', 'store_name', 'store_address', 'store_phone', 'store_email',
-        'store_website', 'store_social_media', 'receipt_header', 'receipt_footer',
-        'currency', 'logo_url', 'tax_rate', 'points_per_amount', 'points_value'
-    ];
-
-    fields.forEach(field => {
-        const element = document.getElementById(field);
-        if (element && appSettings[field] !== undefined) {
-            element.value = appSettings[field];
-        }
-    });
-
-    const taxEnabledElement = document.getElementById('tax_enabled');
-    if (taxEnabledElement) {
-        taxEnabledElement.checked = appSettings.tax_enabled === true || appSettings.tax_enabled === 1;
-    }
-}
-
-async function saveSettings() {
-    const formData = new FormData(document.getElementById('settings-form'));
-    const settingsData = Object.fromEntries(formData.entries());
-
-    // Convert checkbox to boolean
-    settingsData.tax_enabled = document.getElementById('tax_enabled').checked;
-
-    try {
-        const response = await apiRequest('api/settings.php', {
-            method: 'POST',
-            body: JSON.stringify(settingsData)
-        });
-
-        if (response.success) {
-            appSettings = {...appSettings, ...settingsData};
-            updateAppTitle();
-            alert('Pengaturan berhasil disimpan!');
-        } else {
-            throw new Error(response.error || 'Failed to save settings');
-        }
-    } catch (error) {
-        console.error('Error saving settings:', error);
-        alert('Error: ' + error.message);
-    }
-}
-
-// Modal functions
-function showModal(title, content, callback = null) {
-    const modal = document.getElementById('dynamic-modal');
-    const modalTitle = document.getElementById('dynamic-modal-title');
-    const modalBody = document.getElementById('dynamic-modal-body');
-
-    if (modal && modalTitle && modalBody) {
-        modalTitle.textContent = title;
-        modalBody.innerHTML = content;
-
-        const bootstrapModal = new bootstrap.Modal(modal);
-        bootstrapModal.show();
-
-        if (callback) {
-            callback();
-        }
-    }
-}
-
-function hideModal() {
-    const modal = document.getElementById('dynamic-modal');
-    if (modal) {
-        const bootstrapModal = bootstrap.Modal.getInstance(modal);
-        if (bootstrapModal) {
-            bootstrapModal.hide();
-        }
-    }
-}
-
-// Utility functions
-function formatNumber(number) {
-    return new Intl.NumberFormat('id-ID').format(number);
-}
-
-// Navigation functions
-function showSection(sectionId) {
-    // Hide all sections
-    document.querySelectorAll('.section').forEach(section => {
-        section.style.display = 'none';
-    });
-
-    // Show selected section
-    const targetSection = document.getElementById(sectionId);
-    if (targetSection) {
-        targetSection.style.display = 'block';
-    }
-
-    // Update active nav
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.classList.remove('active');
-    });
-
-    const activeLink = document.querySelector(`[onclick="showSection('${sectionId}')"]`);
-    if (activeLink) {
-        activeLink.classList.add('active');
-    }
-
-    // Load section-specific data
-    switch(sectionId) {
-        case 'kasir':
-            loadProducts();
-            displayProducts();
-            break;
-        case 'members':
-            loadMembers();
-            displayMembers();
-            break;
-        case 'users':
-            loadUsers();
-            break;
-        case 'settings':
-            loadSettings();
-            break;
-    }
-}
-
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    // Show default section
-    showSection('dashboard');
-});
-
-// Held transactions functions
-async function loadHeldTransactions() {
-    try {
-        const response = await apiRequest('api/held-transactions.php');
-        heldTransactions = response || [];
-        displayHeldTransactions();
-    } catch (error) {
-        console.error('Error loading held transactions:', error);
-        heldTransactions = [];
-    }
-}
-
-function displayHeldTransactions() {
-    const container = document.getElementById('held-transactions');
-    if (!container) return;
-
-    if (heldTransactions.length === 0) {
-        container.innerHTML = '<p class="text-muted">Tidak ada transaksi tertunda</p>';
-        return;
-    }
-
-    container.innerHTML = heldTransactions.map(transaction => `
-        <div class="card mb-2">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <strong>Transaksi #${transaction.id}</strong><br>
-                        <small class="text-muted">${transaction.note || 'Tanpa catatan'}</small><br>
-                        <small class="text-muted">${new Date(transaction.created_at || transaction.held_at).toLocaleString('id-ID')}</small>
-                    </div>
-                    <div>
-                        <button class="btn btn-sm btn-primary me-1" onclick="loadHeldTransaction(${transaction.id})">
-                            Muat
-                        </button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteHeldTransaction(${transaction.id})">
-                            Hapus
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `).join('');
-}
-
-async function holdTransaction() {
-    if (cart.length === 0) {
-        alert('Keranjang kosong!');
-        return;
-    }
-
-    const note = prompt('Masukkan catatan untuk transaksi tertunda:') || '';
-
-    try {
-        const response = await apiRequest('api/held-transactions.php', {
-            method: 'POST',
-            body: JSON.stringify({
-                cart: cart,
-                note: note
-            })
-        });
-
-        if (response.success) {
-            console.log('Transaction held successfully');
-            clearCart();
-            await loadHeldTransactions();
-        } else {
-            throw new Error(response.error || 'Failed to hold transaction');
-        }
-    } catch (error) {
-        console.error('Error saving held transaction:', error);
-        alert('Error: ' + error.message);
-    }
-}
-
-async function loadHeldTransaction(id) {
-    try {
-        const transaction = await apiRequest(`api/held-transactions.php?id=${id}`);
-        if (transaction && transaction.cart_data) {
-            cart = transaction.cart_data;
-            updateCartDisplay();
-
-            // Delete the held transaction after loading
-            await deleteHeldTransaction(id);
-        }
-    } catch (error) {
-        console.error('Error loading held transaction:', error);
-        alert('Error loading held transaction: ' + error.message);
-    }
-}
-
-async function deleteHeldTransaction(id) {
-    try {
-        const response = await apiRequest(`api/held-transactions.php?id=${id}`, {
-            method: 'DELETE'
-        });
-
-        if (response.success) {
-            await loadHeldTransactions();
-            await loadProducts(); // Refresh products to update display
-        } else {
-            throw new Error(response.error || 'Failed to delete held transaction');
-        }
-    } catch (error) {
-        console.error('Error deleting held transaction:', error);
-        alert('Error: ' + error.message);
-    }
-}
-
-// Product search
-function searchProducts() {
-    const searchTerm = document.getElementById('product-search').value.toLowerCase();
-    const filteredProducts = products.filter(product => 
-        product.name.toLowerCase().includes(searchTerm) ||
-        product.barcode.includes(searchTerm)
-    );
-    displayProducts(filteredProducts);
-}
-
-function displayProducts(productsToShow = products) {
-    const container = document.getElementById('products-grid');
-    if (!container) return;
-
-    container.innerHTML = productsToShow.map(product => `
-        <div class="col-md-4 col-sm-6 mb-3">
-            <div class="card product-card" onclick="addToCart(${product.id})">
-                <div class="card-body">
-                    <h6 class="card-title">${product.name}</h6>
-                    <p class="card-text">
-                        <small class="text-muted">Kode: ${product.barcode}</small><br>
-                        <strong>${appSettings.currency || 'Rp'} ${formatNumber(product.price)}</strong><br>
-                        <small class="text-muted">Stok: ${product.stock}</small>
-                    </p>
-                </div>
-            </div>
-        </div>
-    `).join('');
-}
-
-// User management functions
-function displayUsers() {
-    const container = document.getElementById('users-table-body');
-    if (!container) return;
-
-    container.innerHTML = users.map(user => `
-        <tr>
-            <td>${user.id}</td>
-            <td>${user.username}</td>
-            <td>${user.name}</td>
-            <td><span class="badge bg-${user.role === 'admin' ? 'danger' : 'primary'}">${user.role}</span></td>
-            <td>${new Date(user.created_at).toLocaleString('id-ID')}</td>
-            <td>
-                <button class="btn btn-sm btn-warning me-1" onclick="editUser(${user.id})">Edit</button>
-                <button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id})">Hapus</button>
-            </td>
-        </tr>
-    `).join('');
-}
-
-function showAddUserModal() {
-    const modalHTML = `
-        <form id="add-user-form">
-            <div class="mb-3">
-                <label for="username" class="form-label">Username</label>
-                <input type="text" class="form-control" id="username" name="username" required>
-            </div>
-            <div class="mb-3">
-                <label for="name" class="form-label">Nama Lengkap</label>
-                <input type="text" class="form-control" id="name" name="name" required>
-            </div>
-            <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
-                <input type="password" class="form-control" id="password" name="password" required>
-            </div>
-            <div class="mb-3">
-                <label for="role" class="form-label">Role</label>
-                <select class="form-control" id="role" name="role" required>
-                    <option value="kasir">Kasir</option>
-                    <option value="admin">Admin</option>
-                </select>
-            </div>
-        </form>
-    `;
-
-    showModal('Tambah User', modalHTML, () => {
-        document.getElementById('add-user-form').addEventListener('submit', handleAddUser);
-    });
-}
-
-async function handleAddUser(e) {
-    e.preventDefault();
-
-    const formData = new FormData(e.target);
-    const userData = Object.fromEntries(formData.entries());
-
-    try {
-        const response = await apiRequest('api/users.php', {
-            method: 'POST',
-            body: JSON.stringify(userData)
-        });
-
-        if (response.success) {
-            await loadUsers();
-            hideModal();
-            alert('User berhasil ditambahkan!');
-        } else {
-            throw new Error(response.error || 'Failed to add user');
-        }
-    } catch (error) {
-        console.error('Error adding user:', error);
-        alert('Error: ' + error.message);
-    }
-}
-
-async function deleteUser(userId) {
-    if (!confirm('Yakin ingin menghapus user ini?')) return;
-
-    try {
-        const response = await apiRequest(`api/users.php?id=${userId}`, {
-            method: 'DELETE'
-        });
-
-        if (response.success) {
-            await loadUsers();
-            alert('User berhasil dihapus!');
-        } else {
-            throw new Error(response.error || 'Failed to delete user');
-        }
-    } catch (error) {
-        console.error('Error deleting user:', error);
-        alert('Error: ' + error.message);
-    }
-}
-
-// Member management functions
-function displayMembers() {
-    const container = document.getElementById('members-table-body');
-    if (!container) return;
-
-    container.innerHTML = members.map(member => `
-        <tr>
-            <td>${member.id}</td>
-            <td>${member.name}</td>
-            <td>${member.phone}</td>
-            <td>${member.points}</td>
-            <td>${new Date(member.created_at).toLocaleString('id-ID')}</td>
-            <td>
-                <button class="btn btn-sm btn-warning me-1" onclick="editMember(${member.id})">Edit</button>
-                <button class="btn btn-sm btn-danger" onclick="deleteMember(${member.id})">Hapus</button>
-            </td>
-        </tr>
-    `).join('');
-}
-
-function showAddMemberModal() {
-    const modalHTML = `
-        <form id="add-member-form">
-            <div class="mb-3">
-                <label for="member-name" class="form-label">Nama</label>
-                <input type="text" class="form-control" id="member-name" name="name" required>
-            </div>
-            <div class="mb-3">
-                <label for="member-phone" class="form-label">No. Telepon</label>
-                <input type="text" class="form-control" id="member-phone" name="phone" required>
-            </div>
-            <div class="mb-3">
-                <label for="member-points" class="form-label">Poin Awal</label>
-                <input type="number" class="form-control" id="member-points" name="points" value="0" min="0">
-            </div>
-        </form>
-    `;
-
-    showModal('Tambah Member', modalHTML, () => {
-        document.getElementById('add-member-form').addEventListener('submit', handleAddMember);
-    });
-}
-
-async function handleAddMember(e) {
-    e.preventDefault();
-
-    const formData = new FormData(e.target);
-    const memberData = Object.fromEntries(formData.entries());
-
-    try {
-        const response = await apiRequest('api/members.php', {
-            method: 'POST',
-            body: JSON.stringify(memberData)
-        });
-
-        if (response.success) {
-            await loadMembers();
-            hideModal();
-            alert('Member berhasil ditambahkan!');
-        } else {
-            throw new Error(response.error || 'Failed to add member');
-        }
-    } catch (error) {
-        console.error('Error saving member:', error);
-        alert('Error: ' + error.message);
-    }
-}
-
-// Settings functions
-async function loadSettings() {
-    try {
-        const response = await apiRequest('api/settings.php');
-        appSettings = response || {};
-        populateSettingsForm();
-    } catch (error) {
-        console.error('Error loading settings:', error);
-    }
-}
-
-function populateSettingsForm() {
-    const fields = [
-        'app_name', 'store_name', 'store_address', 'store_phone', 'store_email',
-        'store_website', 'store_social_media', 'receipt_header', 'receipt_footer',
-        'currency', 'logo_url', 'tax_rate', 'points_per_amount', 'points_value'
-    ];
-
-    fields.forEach(field => {
-        const element = document.getElementById(field);
-        if (element && appSettings[field] !== undefined) {
-            element.value = appSettings[field];
-        }
-    });
-
-    const taxEnabledElement = document.getElementById('tax_enabled');
-    if (taxEnabledElement) {
-        taxEnabledElement.checked = appSettings.tax_enabled === true || appSettings.tax_enabled === 1;
-    }
-}
-
-async function saveSettings() {
-    const formData = new FormData(document.getElementById('settings-form'));
-    const settingsData = Object.fromEntries(formData.entries());
-
-    // Convert checkbox to boolean
-    settingsData.tax_enabled = document.getElementById('tax_enabled').checked;
-
-    try {
-        const response = await apiRequest('api/settings.php', {
-            method: 'POST',
-            body: JSON.stringify(settingsData)
-        });
-
-        if (response.success) {
-            appSettings = {...appSettings, ...settingsData};
-            updateAppTitle();
-            alert('Pengaturan berhasil disimpan!');
-        } else {
-            throw new Error(response.error || 'Failed to save settings');
-        }
-    } catch (error) {
-        console.error('Error saving settings:', error);
-        alert('Error: ' + error.message);
-    }
-}
-
-// Modal functions
-function showModal(title, content, callback = null) {
-    const modal = document.getElementById('dynamic-modal');
-    const modalTitle = document.getElementById('dynamic-modal-title');
-    const modalBody = document.getElementById('dynamic-modal-body');
-
-    if (modal && modalTitle && modalBody) {
-        modalTitle.textContent = title;
-        modalBody.innerHTML = content;
-
-        const bootstrapModal = new bootstrap.Modal(modal);
-        bootstrapModal.show();
-
-        if (callback) {
-            callback();
-        }
-    }
-}
-
-function hideModal() {
-    const modal = document.getElementById('dynamic-modal');
-    if (modal) {
-        const bootstrapModal = bootstrap.Modal.getInstance(modal);
-        if (bootstrapModal) {
-            bootstrapModal.hide();
-        }
     }
 }
 

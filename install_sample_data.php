@@ -287,7 +287,7 @@ try {
          receipt_header, receipt_footer, currency, logo_url, tax_enabled, tax_rate, points_per_amount, points_value, created_at, updated_at) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))");
     if ($settingsStmt->execute($settingsData)) {
-        echo "  → Pengaturan aplikasi berhasil diinstall\n";
+        echo "  → Pengaturan aplikasi berhasil diinstal\n";
         echo "    • Nama Aplikasi: {$settingsData[0]}\n";
         echo "    • Nama Toko: {$settingsData[1]}\n";
         echo "    • Pajak: " . ($settingsData[11] ? "Aktif ({$settingsData[12]}%)" : "Tidak Aktif") . "\n";

@@ -203,6 +203,17 @@ Tables akan dibuat otomatis:
 - `inventory_log` - Log perubahan stok
 - `app_settings` - Pengaturan aplikasi
 
+## 🧪 Running Tests
+
+1. Install dependencies:
+   ```bash
+   composer install
+   ```
+2. Run the test suite:
+   ```bash
+   vendor/bin/phpunit
+   ```
+
 ## 🐛 Troubleshooting
 
 ### Database Issues

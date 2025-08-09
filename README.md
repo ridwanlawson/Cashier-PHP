@@ -5,6 +5,25 @@
 
 Aplikasi Kasir Digital adalah sistem Point of Sale (POS) yang dibuat dengan PHP dan SQLite. Aplikasi ini memungkinkan Anda untuk mengelola produk, melakukan transaksi penjualan, tracking inventory, dan manajemen user dengan antarmuka yang modern dan responsif.
 
+## 🚀 Quick Start
+
+1. **Install dependencies**
+   ```bash
+   composer install
+   ```
+2. **(Optional) Install sample data**
+   ```bash
+   php install_sample_data.php
+   ```
+3. **Run the development server**
+   ```bash
+   php -S localhost:8000
+   ```
+4. **Open the app**: Navigate to [http://localhost:8000](http://localhost:8000) in your browser.
+5. **Log in** using the default credentials:
+   - Admin: `admin` / `password`
+   - Kasir: `kasir` / `password`
+
 ## 🌟 Fitur Utama
 
 ### 📊 Dashboard

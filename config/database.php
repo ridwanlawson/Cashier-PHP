@@ -9,7 +9,7 @@ class Database {
 
         try {
             // Use SQLite for Replit compatibility
-            $db_path = __DIR__ . '/../api/kasir_digital.db';
+            $db_path = getenv('DB_PATH') ?: __DIR__ . '/../api/kasir_digital.db';
 
             // Ensure directory exists
             $db_dir = dirname($db_path);

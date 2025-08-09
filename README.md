@@ -88,8 +88,8 @@ Aplikasi Kasir Digital adalah sistem Point of Sale (POS) yang dibuat dengan PHP 
 
 ### 1. Clone Repository
 ```bash
-git clone https://github.com/username/kasir-digital.git
-cd kasir-digital
+git clone https://github.com/<username>/Cashier-PHP.git
+cd Cashier-PHP
 ```
 
 ### 2. Setup Database
@@ -121,7 +121,7 @@ Akses aplikasi di: `http://localhost:8000`
 ## 📁 Struktur Project
 
 ```
-kasir-digital/
+Cashier-PHP/
 ├── api/                    # API endpoints
 │   ├── products.php       # API untuk produk
 │   ├── transactions.php   # API untuk transaksi

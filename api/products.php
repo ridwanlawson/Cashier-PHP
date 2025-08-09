@@ -4,6 +4,19 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
 header('Access-Control-Allow-Headers: Content-Type');
 
+// Start session and enforce authentication
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+require_once '../auth.php';
+
+$auth = new Auth();
+if (!$auth->isLoggedIn()) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+    exit;
+}
+
 // Prevent any output before JSON
 ob_start();
 
